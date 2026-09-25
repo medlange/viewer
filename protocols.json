@@ -1,0 +1,82 @@
+{
+  "_comment": [
+    "HANGING PROTOCOLS: how a case is laid out the moment it opens, and what that",
+    "arrangement is CALLED.",
+    "",
+    "WHAT THIS IS BUILT ON, AND WHAT IT IS NOT BUILT UNDER. MOS-UI-209 says a case MUST",
+    "open with its series already laid out, under a NAMED hanging protocol, and that 'the",
+    "reader MUST NOT have to find the series, choose between them, or construct the",
+    "layout'. That sentence is the whole of why this file exists.",
+    "",
+    "The rest of MOS-UI-209 is about a product that is gone: the protocol 'MUST be",
+    "contributed as a hangingProtocolModule from the extension package and MUST be named in",
+    "ohif.lock', and MOS-UI-213 binds every requirement in 19.4.4 to 'OHIF configuration or",
+    "a module contributed from the extension package'. OHIF was withdrawn at specification",
+    "0.4.0; there is no extension package loaded and no ohif.lock. So 19.4.4 does not reach",
+    "this surface, exactly as 19.4.4's MOS-UI-211 does not reach src/image/mpr.js -- see",
+    "that file's header for the same argument made once already, including the correction",
+    "of an earlier version of it that claimed the requirement DID reach it.",
+    "",
+    "The substance is built anyway, because it is right, and it is recorded here as",
+    "substance rather than as compliance. MOS-UI-209 remains UNMET as written: it selects a",
+    "protocol by the annotation campaign's capability_id, and the clinical viewer has no",
+    "campaign.",
+    "",
+    "A PROTOCOL IS NAMED ON SCREEN. That is not decoration either. An arrangement that",
+    "appears without saying why teaches a reader that the layout is arbitrary, and the day",
+    "it puts the scout in panel one they will assume it always did. The name is in the left",
+    "rail, and it says 'overridden' the moment the reader picks a layout themselves --",
+    "because after that the screen is theirs and the protocol is no longer describing it.",
+    "",
+    "THE FALLBACK IS DECLARED, NOT IMPLICIT. The last entry has an empty `when` and",
+    "therefore always matches. A table whose last rule can fail is a table that sometimes",
+    "arranges nothing while claiming to have arranged something.",
+    "",
+    "WHAT `when` CAN ASK, and nothing else -- an unknown key makes a rule NOT match rather",
+    "than match vacuously, so a typo loses its own rule instead of silently catching every",
+    "study:",
+    "  priorOpen       true when more than one study is on screen",
+    "  modality        every image series in the study carries this modality",
+    "  minImageSeries  at least this many CT/MR/PT series",
+    "  maxImageSeries  at most this many"
+  ],
+  "version": "0.1.0",
+  "protocols": [
+    {
+      "id": "prior-comparison",
+      "name": "Current and prior, side by side",
+      "when": { "priorOpen": true },
+      "layout": { "rows": 1, "cols": 2 }
+    },
+    {
+      "id": "mr-sequences",
+      "name": "MR sequences, one to a panel",
+      "when": { "modality": "MR", "minImageSeries": 3 },
+      "layout": { "rows": 2, "cols": 2 }
+    },
+    {
+      "id": "mr-pair",
+      "name": "MR sequences, side by side",
+      "when": { "modality": "MR", "minImageSeries": 2, "maxImageSeries": 2 },
+      "layout": { "rows": 1, "cols": 2 }
+    },
+    {
+      "id": "ct-reconstructions",
+      "name": "CT reconstructions, one to a panel",
+      "when": { "modality": "CT", "minImageSeries": 4 },
+      "layout": { "rows": 2, "cols": 2 }
+    },
+    {
+      "id": "ct-pair",
+      "name": "CT reconstructions, side by side",
+      "when": { "modality": "CT", "minImageSeries": 2 },
+      "layout": { "rows": 1, "cols": 2 }
+    },
+    {
+      "id": "single-series",
+      "name": "One series, one panel",
+      "when": {},
+      "layout": { "rows": 1, "cols": 1 }
+    }
+  ]
+}

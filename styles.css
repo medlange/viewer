@@ -1,0 +1,2505 @@
+/* MedicalOS Viewer — no framework, no build step, one file. */
+
+:root {
+  /* ===================================================================================
+   * THE HOUSE PALETTE, from the "MedOS Clinical Surfaces" design canvas (Viewer.dc.html).
+   *
+   * Darker and bluer than what was here. That is not taste: a reading surface is looked
+   * at for hours beside a black image, and a #0b0e14 chrome against a #000 viewport reads
+   * as a grey smear at the edge of vision. #04070f sits close enough to black that the
+   * image is the only bright thing on screen, which is the whole job of the chrome.
+   * =================================================================================== */
+  --bg: #04070f;              /* the page behind everything */
+  --panel: #070d1a;           /* chrome: header, rails, footer */
+  --panel-2: #0d1626;         /* a raised surface on the chrome */
+  --line: #1f2b44;            /* borders that separate */
+  /* THE BOUNDARY THAT SAYS "THIS IS A CONTROL", which is a different job from the one
+     above and has a floor the decorative borders do not.
+
+     Every input, select and button on this surface was outlined in --line: 1.38:1 on
+     --panel and 1.28:1 on --panel-2, against the 3:1 that WCAG 1.4.11 asks of the visual
+     information needed to IDENTIFY a component. Nothing else marked them -- the fills
+     measured 1.04:1 and 1.00:1 against their surrounds -- so at rest a text field and the
+     panel behind it were the same surface with a hairline drawn on it.
+
+     SAME HUE, RAISED UNTIL IT CLEARS THE FLOOR on both chrome surfaces: 3.43:1 on
+     --panel, 3.20:1 on --panel-2, 3.56:1 on --bg. --line keeps its value, so the dividers
+     and the panel edges -- decoration, and exempt -- look exactly as they did. */
+  --line-ctl: #4a66a2;        /* borders that identify something you can operate */
+  --line-2: #16203a;          /* borders that merely divide within a rail */
+  --line-3: #24314a;          /* toolbar dividers */
+
+  --ink: #e8edf5;             /* primary text */
+  --ink-2: #c3d2e6;           /* secondary: labels, button text */
+  --ink-3: #c9d6e8;           /* HUD over the image, which needs to survive a text-shadow */
+  --muted: #8fa3c0;           /* explanatory text */
+  --muted-2: #6f8399;         /* units, counts, the technical footer line */
+
+  --accent: #5b9bd5;          /* section headings, focus, the active panel's edge */
+  --accent-hi: #7fb6e8;       /* hover on a link */
+  --accent-ink: #bcd9f2;      /* text on an accent-tinted surface */
+  --accent-fill: rgba(91, 155, 213, .20);
+  --tool-on: #10707f;         /* an ENGAGED tool. Teal, not blue: a mode that is currently
+                                 changing what the mouse does is a different kind of state
+                                 from a selected value, and they must not look alike. */
+
+  --ok: #2fbf55;              /* a link the geometry establishes */
+  --ok-ink: #7fe09a;
+  --ok-fill: rgba(47, 191, 85, .12);
+  --ok-line: #2b5f3a;
+
+  --warn: #d0a52a;            /* a link the reader asserted, and every RUO mark */
+  --warn-ink: #d0a52a;
+  --warn-fill: #1c1608;
+  --warn-line: #7a6420;
+  --warn-foot: #9c7f26;
+
+  --err: #e0452f;
+
+  --hu: #ffd34d;              /* the value under the cursor. The one number on the image
+                                 that is read continuously, so it gets its own colour. */
+
+  /* TYPE. No webfont: this page's own header records that every dependency here is a SOUP
+   * item under IEC 62304 8.1.2, and a hospital deployment cannot reach a font CDN. The
+   * canvas draws IBM Plex Sans/Mono; these stacks are the closest thing already present on
+   * a clinical workstation, and vendoring Plex locally is a decision to take deliberately
+   * rather than by adding a <link>. */
+  --sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+          "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", "Consolas", "Liberation Mono", monospace;
+
+  /* The chrome's fixed bands. Every one of these is load-bearing for the layout below. */
+  --h-bar: 44px;
+  --h-foot: 22px;
+  /* The widest the study list is allowed to grow before it centres instead.
+     MEASURED, AND RE-MEASURED. The first value was 1520px: the eight columns' max-content
+     of 1469 plus the wrapper's own 32px of padding. Capping `.wl-id` at 200px took 181px
+     off the table, which then wanted 1284 and left 281px of gutter on one side inside a
+     1520px column -- the asymmetry the centring exists to remove, reintroduced by a later
+     change to a different rule. Re-measured the same way, `width: max-content` on the live
+     table: 1284 + 32. A number taken from a measurement has to be retaken when the thing
+     it measured moves. */
+  --w-worklist: 1316px;
+  --w-rail: 186px;
+  /* THE BOUNDS A SPLITTER CLAMPS TO. 140px keeps a series row legible against the
+     28px heading band; below it the thumbnails clip and the rail reads as broken
+     rather than as narrow. A rail is taken to NOTHING with the keyboard, which is a
+     different state and reversible -- see rails.js. */
+  --w-rail-min: 140px;
+  --w-rail-max: 420px;
+  --w-aside-min: 180px;
+  --w-aside-max: 480px;
+  --w-aside: 250px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0; height: 100%;
+  /* EVERY NATIVE CONTROL IS DRAWN DARK, not just the date fields.
+     `color-scheme` was declared once, scoped to `input[type="date"]`, so every OTHER
+     UA-drawn control stayed light: the Preferences checkboxes were white squares, the
+     language dropdown and the modality filter opened as white popups with black text, and
+     the dialog's own scrollbar was light. A reader an hour into a study opening
+     Preferences beside a black image got a white flash. `accent-color` does the same for
+     the checkboxes' filled state. */
+  color-scheme: dark;
+  accent-color: var(--accent);
+  background: var(--bg); color: var(--ink);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  /* Numbers in a clinical readout must not shift width as they change, or a slice counter
+     ticking past 99 makes the whole HUD jump. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- bar ---------- */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: var(--h-bar);
+  flex: 0 0 auto;
+  padding: 0 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line-2);
+}
+/* THE SAFETY MARK GOES TO THE CORNER, AND NOT BECAUSE SOMETHING ELSE PUSHED IT THERE.
+   `.bar-right` had no margin of its own: it sat at the right only while `#who`, the patient
+   banner, was present to absorb the slack with `flex: 1`. The banner is `hidden` until a
+   study is open, so on the study list -- the FIRST screen anyone sees -- the RUO mark and
+   the gear packed against the tools with 1260px of empty header to their right. index.html
+   argues at length that this mark belongs in the corner a reader's eye rests in; that
+   argument was being kept by a side effect of an element that is usually not there. */
+.bar-right { margin-left: auto; }
+
+/* AND ON THE STUDY LIST THE CHROME SHARES THE LIST'S COLUMN.
+   The worklist is a centred column of `--w-worklist`; a header that stayed edge-to-edge
+   put the brand and the safety mark hard against the window while the table they head
+   sat 60px inside it. Only on this screen: the reading surface is edge-to-edge by design,
+   because the picture is. */
+body[data-screen="worklist"] .bar,
+body[data-screen="worklist"] .foot {
+  padding-inline: max(12px, calc((100% - var(--w-worklist)) / 2 + 12px));
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.mark {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--accent);
+}
+.bar h1 {
+  margin: 0;
+  font: 500 11px/1.25 var(--sans);
+  color: var(--ink-2);
+  letter-spacing: 0;
+}
+.sub {
+  margin: 0;
+  font: 400 11px/1.25 var(--sans);
+  color: var(--muted-2);
+}
+.bar-right { display: flex; align-items: center; gap: 10px; }
+.pill {
+  font-size: 11px; padding: 4px 10px; border-radius: 999px;
+  background: rgba(56,199,89,.12); color: var(--ok); border: 1px solid rgba(56,199,89,.3);
+}
+.ghost {
+  background: transparent; color: var(--ink); border: 1px solid var(--line-ctl);
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.ghost:hover { background: var(--panel-2); }
+
+main { flex: 1 1 auto; min-height: 0; display: flex; }
+
+/* THE WAY PAST SEVENTEEN TAB STOPS (WCAG 2.4.1).
+   Off-screen until it has focus, and then a real control in the corner it would occupy
+   anyway. It is not `display:none` and not `visibility:hidden`, because neither is
+   focusable -- a skip link that cannot be reached is the thing it was added to fix. */
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -40px;
+  z-index: 60;
+  padding: 7px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--ink);
+  font: 500 12px/1 var(--sans);
+  text-decoration: none;
+  transition: top .12s ease;
+}
+.skip:focus { top: 8px; }
+@media (prefers-reduced-motion: reduce) { .skip { transition: none; } }
+
+/* ---------- study list ---------- */
+.panel { flex: 1; padding: 24px; overflow: auto; }
+.panel h2 { margin: 0 0 16px; font-size: 18px; }
+.studies { display: flex; flex-direction: column; gap: 8px; max-width: 900px; }
+.study {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 16px; color: var(--ink); font: inherit;
+}
+.study:hover { border-color: var(--accent); background: var(--panel-2); }
+.study-main { display: flex; flex-direction: column; gap: 2px; }
+.study-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 12px; }
+.tags { color: var(--accent); font-size: 11px; letter-spacing: .4px; }
+
+/* ---------- viewer ---------- */
+.viewer {
+  flex: 1;
+  display: flex;
+  /* BOTH AXES, AND `min-width` IS THE ONE THAT WAS MISSING.
+   *
+   * A flex item defaults to `min-width: auto`, which floors it at its content's min-content
+   * width -- so this section refused to shrink below the width its toolbar and panels
+   * wanted and simply overflowed the window instead. Measured in a 1024 px viewport: the
+   * section came out 2716 px wide, each panel of a 1x2 layout took 1212 px, and the second
+   * panel sat entirely off-screen behind a horizontal scrollbar. For a LINKED pair that is
+   * the whole feature gone -- the panel whose badge says `position-linked` is the one you
+   * cannot see.
+   *
+   * `.tools` already carried `flex-wrap: wrap` and it never fired, because a row cannot
+   * wrap inside a container that is itself as wide as the row. One floor, two symptoms.
+   *
+   * `min-height: 0` was already here for the vertical axis and for the same reason. */
+  min-width: 0;
+  min-height: 0;
+}
+.side {
+  /* 186px, down from 290. The rail held three text spans in a column wide enough to be a
+     second reading pane; the canvas gives the image that space back and puts a thumbnail
+     in the rail instead, which identifies a series faster than a truncated description. */
+  width: var(--w-rail);
+  flex: 0 0 var(--w-rail);
+  /* `.aside` has carried this since it was written and `.side` never did, so the left
+     rail floored at the min-content width of its series thumbnails and would not
+     narrow past them. Measured by dragging: it stopped at 186px and the splitter
+     appeared broken. Same rule, same reason, as `.viewer`. */
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--line-2);
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+.side h3 {
+  /* A section head is a band, not floating text: 28px, ruled under, accent-coloured, so
+     the rail reads as three stacked regions rather than one long column. */
+  margin: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  /* THE RULE SEPARATES SECTIONS, NOT A HEADING FROM ITS OWN BODY. A heading and the
+     rows under it are one unit; a line between them said they were two, while the place
+     that genuinely is a boundary -- the last row and the next heading -- had nothing.
+     `--line` is the palette's "borders that separate". */
+  border-top: 1px solid var(--line);
+  font: 500 11px/1 var(--sans);
+  text-transform: none;
+  letter-spacing: 0;
+  /* Structure is carried by the band, the rule and the height. The accent is state. */
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.side h3:first-child { margin: 0; }
+
+.series, .segments {
+  list-style: none;
+  margin: 0;
+  padding: 7px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.series-item {
+  /* A THUMBNAIL, a modality mark and two lines. The old row was a flex line of three
+     spans with `nowrap` ellipsis, so on a real protocol description the discriminating
+     part -- "3.0 B30f 50% Ex" -- was the part cut off. */
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 3px;
+  cursor: pointer;
+  text-align: left;
+  font: 400 10px/1.3 var(--sans);
+  color: var(--ink-2);
+}
+.series-item:hover {
+  border-color: var(--accent);
+}
+.series-item.active {
+  background: var(--accent-fill);
+  border-color: var(--accent);
+}
+.series-desc {
+  display: block;
+  margin-top: 3px;
+  font: 400 10px/1.3 var(--sans);
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mod {
+  font: 600 10px/1 var(--mono);
+  letter-spacing: .4px;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+}
+.mod-CT { background: rgba(79,143,250,.2); color: #8fb8ff; }
+.mod-SEG { background: rgba(56,199,89,.2); color: #74e08f; }
+.mod-SR { background: rgba(250,191,46,.2); color: #f5d27a; }
+
+.segments li { display: flex; align-items: center; gap: 8px; padding: 5px 2px; font-size: 13px; }
+.swatch { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
+
+.meas { width: 100%; border-collapse: collapse; font-size: 12px; }
+/* THE DIVIDER IS ON THE ROW, NOT THE CELLS. Under `border-collapse: collapse` a row
+   border draws once across the row; per-cell borders broke into segments at two heights
+   once the first cell stopped being a table cell. --line-2 is the token for a border that
+   merely divides within a rail. */
+.meas td { padding: 4px 2px; vertical-align: top; }
+.meas tr { border-bottom: 1px solid var(--line-2); }
+.meas .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.meas .unit { color: var(--muted); width: 34px; padding-left: 6px; }
+
+/* ---------- stage ---------- */
+.stage { flex: 1; position: relative; min-width: 0; background: #000; }
+#canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+.hud {
+  position: absolute;
+  font: 400 11px/1.5 var(--sans);
+  color: var(--ink-3);
+  pointer-events: none;
+  /* AN OPAQUE RING, NOT A BLUR. This one declaration is the whole separation between
+     the chrome and the pixels. Over black it is invisible and nothing is needed; over
+     bright tissue -- bone in a soft-tissue window, a chest wall under the edge letters, a
+     contrast-filled aorta under the bottom-right readout -- a blurred shadow has nothing
+     to darken and the glyph greys into the anatomy. Eight hard copies build a ring the
+     glyph cannot wash into; the soft copy keeps the edge from reading as stamped on. */
+  text-shadow:
+    -1px -1px 0 #000, 0 -1px 0 #000, 1px -1px 0 #000,
+    -1px  0    0 #000,               1px  0    0 #000,
+    -1px  1px 0 #000, 0  1px 0 #000, 1px  1px 0 #000,
+    0 0 4px rgba(0, 0, 0, .9);
+  font-variant-numeric: tabular-nums;
+}
+/* BOUNDED LANES. An absolutely-positioned block shrink-wraps to its containing block,
+   so the raw SeriesDescription in the top-left and the ~100-character slab sentence in
+   the bottom-right ran across the centre, over the orientation letter and the scale
+   bar -- worst in a 2x2 layout, where each panel is half as wide. */
+.hud-tl { top: 8px; left: 10px; max-width: 46%; }
+.hud-tr { top: 10px; right: 12px; }
+.hud-bl { bottom: 10px; left: 12px; }
+.hud-br { bottom: 8px; right: 14px; text-align: right; max-width: 46%; line-height: 1.35; }
+
+/* THE BOTTOM BAND OF A NARROW PANEL CANNOT HOLD TWO COLUMNS, SO ONE MOVES.
+   Measured at 1024x768 in a 2x2, panel 283x285: `.hud-br` wraps to its `max-width: 46%`,
+   the box grows to 130px and its left edge lands at the panel's middle -- on the `P`
+   laterality marker (8x23 of overlap) and on the `50 mm` scale label (20x4). Keeping both
+   columns down there would leave the readout 0.375W - 40 = 66px, four lines of type over
+   the anatomy; the band simply does not hold them.
+
+   The top band's right side carries one line (window and level), so the readout goes under
+   it. The bottom band is then the probe, the link badge and the centre column -- the scale
+   bar and the marker that says which side of the patient this is.
+
+   MEASURED AGAINST THE PANEL, NOT THE WINDOW. Whether this collides depends on the PANEL:
+   411px at 1280 in a 2x2 fits on one line, 283px at 1024 does not. A media query knows the
+   window and knows nothing about the layout, the rails' widths, or a splitter the reader
+   dragged. `@container` asks the panel, which is the thing that got narrow. */
+.vp { container-type: inline-size; }
+@container (max-width: 380px) {
+  .hud-br {
+    top: 30px;
+    bottom: auto;
+    /* 40%, not 46%: at 283px the left edge lands at 156 and the top-centre `A` marker
+       ends at 146. The narrower cap is what keeps the readout off the second marker. */
+    max-width: 40%;
+  }
+}
+
+/* A BAR ABOVE THE PICTURE, NOT A PATCH ON IT.
+   This rule was `position: absolute; left: 50%; top: 14px` inside `.stage` -- a 593x54
+   panel floating over the grid. See the comment at `#notice` in index.html for what that
+   measured out to on a real 2x2. Here it is a flex child of `.stage-wrap`, between the
+   toolbar and the grid: it takes its own height from the flow, the grid gets what is left,
+   and nothing it says is written over anything the reader needs to see.
+
+   FULL WIDTH AND NO CORNERS, because it is now part of the chrome rather than an object
+   on the image, and it reads as the toolbar's own continuation -- one border, one
+   background, no floating card. */
+.notice {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: center;
+  background: rgba(250, 191, 46, .12);
+  color: var(--warn);
+  border-bottom: 1px solid rgba(250, 191, 46, .35);
+}
+.notice.err { background: rgba(230,61,61,.12); color: #ff8a8a; border-bottom-color: rgba(230,61,61,.4); }
+.notice.info { background: rgba(79,143,250,.12); color: #9dc0ff; border-bottom-color: rgba(79,143,250,.35); }
+
+/* ---------- misc ---------- */
+.muted { color: var(--muted); }
+.tiny { font-size: 11px; }
+
+/* A warning about the overlay's own alignment, and it has to out-rank the rows above it.
+   `segments-panel.js` picks this class when a SEG has frames it could not place, or could
+   place only by geometry. It was emitting the class against NO RULE, so the sentence
+   "this overlay is incomplete" rendered in body text indistinguishable from the clean
+   case -- a warning that warns in the DOM and not on screen. MOS-SAFE-069 has a reviewer
+   record a MODIFIED review when they disagree with a generated SEG, and an overlay
+   quietly missing forty frames looks like a model that under-segmented; the two need
+   different actions, so the reader has to be able to tell them apart at a glance. */
+.warn-text {
+  color: var(--warn);
+  border-left: 2px solid var(--warn);
+  padding-left: 6px;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+.err { color: #ff8a8a; }
+
+/* A reference line: where another panel's slice plane cuts this one. Dashed and thin on
+   purpose -- it is a locator, not a finding, and a solid line of the same weight as a
+   caliper would read as a measurement somebody made. */
+.annot-reference {
+  stroke: #5b9bd5;
+  stroke-width: 1;
+  stroke-dasharray: 7 5;
+  opacity: .85;
+  fill: none;
+}
+.annot-reference-label {
+  fill: #5b9bd5;
+  font: 500 10px/1 'IBM Plex Mono', ui-monospace, monospace;
+  paint-order: stroke;
+  stroke: rgba(0,0,0,.75);
+  stroke-width: 2.5px;
+}
+
+.foot {
+  /* A THREE-COLUMN GRID, not a centred line with an absolutely-positioned one beside it.
+     The technical detail and the MOS-SAFE-001 statement are different lengths on every
+     study, and any arithmetic that keeps them apart at one width fails at another: they
+     ran together into one sentence at 1440 with a max-width tuned for it. The grid gives
+     the statement the true centre column and the detail whatever is left, so neither can
+     reach the other whatever they say. */
+  display: grid;
+  /* THE THIRD COLUMN SIZES TO ITS CONTENT, and that is the whole repair.
+     `1fr auto 1fr` makes the outer two columns EQUAL, so the research-use marking was
+     given whatever the technical line's column got: 238px at 1240px wide, into which a
+     445px sentence does not go. It wrapped into a 29px-wide, 130px-tall ribbon. The
+     marking now takes the width it needs and the technical line -- which already
+     truncates with an ellipsis, and is the one line here that may -- takes the rest.
+     The statement drifts about 6px off true centre at 1641px. That is the price. */
+  grid-template-columns: minmax(0, 1fr) auto max-content;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+  min-height: var(--h-foot);
+  padding: 2px 12px;
+  background: var(--panel);
+  border-top: 1px solid var(--line-2);
+  /* ABOVE THE MODAL SCRIM WHATEVER HEIGHT IT ENDS UP AT. `.dlg-back` stops at
+     `--h-foot` from the bottom, which was exact while the footer was exactly that tall;
+     now that it may grow, the footer says so itself rather than relying on the
+     arithmetic agreeing. */
+  position: relative;
+  z-index: 42;
+  /* THE SMALLEST TEXT ON THE SURFACE WAS THE SAFETY MARKING.
+     9px/600 with .9px tracking in --warn-foot, and `.foot-ruo` then knocked it to 85%
+     opacity: composited over --panel that is #866e24 = 3.95:1, under the 4.5:1 AA floor,
+     and 9px is nowhere near the large-text exemption. The hierarchy between the two
+     footer lines is kept with a real colour step instead of an opacity that dims a
+     required marking below the threshold at which it can be read. */
+  font: 600 10px/1 var(--sans);
+  letter-spacing: .3px;
+  color: var(--warn-ink);
+  text-align: center;
+}
+
+/* The technical line, left of the notice. What the pixels on screen actually ARE --
+   count, size, type, the Modality LUT and the transfer syntax -- in the register that
+   makes it checkable rather than decorative. */
+.foot-tech {
+  /* First grid column, left aligned, clipped at its own edge. */
+  justify-self: start;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 400 10px/1 var(--mono);
+  letter-spacing: 0;
+  color: var(--muted-2);
+  text-transform: none;
+}
+
+/* `hidden` must beat the layout rules above. `.viewer { display:flex }` and
+   `.panel { flex:1 }` both outrank the UA stylesheet's `[hidden]{display:none}`, so
+   without this the study list and the viewer render on top of each other. */
+[hidden] { display: none !important; }
+
+/* THE SPLITTER. 4px wide with a col-resize cursor; `touch-action: none` so a drag on a
+   touch screen resizes the rail instead of scrolling the page out from under it. The
+   focus ring is the same accent as hover because a keyboard user resizing a rail is
+   doing the same thing a pointer user is, and should see the same affordance. */
+/* A 10px GRAB ZONE AROUND A 4px LINE. WCAG 2.2 SC 2.5.8 asks for 24x24 and this file
+   already adopted that criterion by name when `.linkish` grew from a 12x15 glyph -- the
+   splitter was simply never measured against the standard the same stylesheet cites. The
+   transparent borders widen only what the pointer can hit; `background-clip: content-box`
+   keeps the painted line pixel-identical, and `box-sizing: border-box` is already set. */
+.splitter {
+  flex: 0 0 10px;
+  cursor: col-resize;
+  background-clip: content-box;
+  border-left: 3px solid transparent;
+  border-right: 3px solid transparent;
+  background-color: var(--line-2);
+  touch-action: none;
+  position: relative;
+}
+/* AND IT STOPS AT 10px, WHICH IS MEASURED RATHER THAN CHOSEN.
+   An overhang was tried and taken back out. There is nowhere for it to go: the nearest
+   interactive element in the rail -- the section fold button -- sits 1px away, and the
+   viewport panel begins at 0px on the other side. A 7px overhang won 4px of hit area and
+   took 2px off the right edge of a fold button, which is trading a target-size shortfall
+   for a target that is wrong. Widening the flex basis instead would cost 28px of
+   diagnostic image across the two splitters.
+   SO THE KEYBOARD CARRIES THIS ONE. `role="separator"` with a tabindex and arrow keys is
+   the full-size route to the same function, which is the standing answer for a pointer
+   affordance that physically cannot grow. Note that SC 2.5.8 is WCAG 2.2; 2.1 AA sets no
+   target size at all. */
+.splitter:hover,
+.splitter:focus-visible,
+.splitter.dragging { background: var(--accent); }
+
+/* While dragging, the cursor and the selection belong to the gesture. Without
+   user-select the drag paints a text selection across the whole shell. */
+body.rail-dragging { cursor: col-resize; user-select: none; }
+
+/* A movable section is one unit: its heading travels with its body. */
+.rail-section { display: contents; }
+
+/* ---------- RadiAnt-style tool strip and stage ---------- */
+.stage-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+.tools {
+  display: flex; align-items: center; gap: 14px; flex: 0 0 auto;
+  padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--line);
+  /* THE TOOLBAR WRAPS. It is a single flex row of six groups -- layout, link, align,
+   * measure, plane, oblique -- and at `nowrap` it simply ran off the right of a 1024 px
+   * window: every button past `Link zoom` was unreachable, including the plane buttons
+   * that the whole reconstruction surface is reached through. `.tool` keeps its own
+   * `white-space: nowrap` so a button breaks between groups and never mid-label.
+   *
+   * `align-items: center` is why this is not enough on its own: it centres each line, and
+   * `.viewer`'s missing `min-width: 0` meant this container never had a real width to wrap
+   * within. Both were needed; either alone leaves the toolbar off-screen. */
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tool-group { display: flex; align-items: center; gap: 4px; }
+.tool-group.right { margin-left: auto; }
+.tool {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--ink-2);
+  border: 1px solid var(--line-ctl);
+  border-radius: 3px;
+  cursor: pointer;
+  font: 500 11px/1 var(--sans);
+  letter-spacing: .1px;
+  white-space: nowrap;
+  transition: background .1s, border-color .1s, color .1s;
+}
+/* HOVER STOPS BORROWING THE ACCENT. The accent is what a CHOSEN value wears; a pointer
+   merely passing over a button must not wear the same colour, or the selected state reads
+   no louder than the affordance -- which is the failure the comment below records. */
+.tool:hover:not(:disabled) {
+  background: var(--panel-2);
+  border-color: var(--line-3);
+  color: var(--ink);
+}
+
+/* AN ENGAGED TOOL IS NOT A SELECTED VALUE -- and this row carries VALUES.
+   `--tool-on` is teal because, as the palette says, "a mode that is currently changing
+   what the mouse does is a different kind of state from a selected value, and they must
+   not look alike". `.tool.picked` was written to carry the value state and then never
+   applied -- `classList.add('picked')` appears nowhere in the JS -- so the plane, the
+   preset, the slab and the zoom all wore the ENGAGED teal. Four teal buttons were on
+   screen before the reader touched anything, which is exactly the confusion the palette
+   comment exists to prevent. The teal now appears only on `.itool.on` in the glyph row,
+   where a mode really is engaged. */
+.tool.on {
+  background: var(--accent-fill);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.tool.on:hover:not(:disabled) {
+  background: var(--accent-fill);
+  border-color: var(--accent-hi);
+  color: var(--ink);
+}
+
+/* THE PICTURE IS NOT IN THE ORIENTATION THE ARCHIVE STORED.
+   Not a selection and not an engaged mode -- a CONDITION of what is on screen, in the
+   register this surface already uses for conditions. `As acquired` was given the engaged
+   teal when the image HAD been rotated or mirrored, and dimmed to 0.38 opacity when it
+   had not: the control naming the safe state lit up to announce the unsafe one. One of
+   the transforms it reports is a left-right mirror. */
+.tool.altered {
+  background: var(--warn-fill);
+  border-color: var(--warn-line);
+  color: var(--warn-ink);
+}
+.tool.altered:hover:not(:disabled) {
+  border-color: var(--warn);
+  color: var(--warn-ink);
+}
+
+/* A control the data does not support -- Coronal on a cine loop, whose frames are
+   separated by time. It STAYS VISIBLE with its reason in the tooltip rather than
+   disappearing, because a toolbar that changes shape between studies teaches a reader that
+   features come and go. `:hover` is neutralised too: a border that lights up on a button
+   that cannot be pressed is the control telling the reader it works. */
+.tool:disabled {
+  /* THE SAME FIX THE GLYPH BUTTONS GOT, and this half was missed: at .38 the
+     label composited to 2.70:1, so a reader could not tell WHICH control was
+     unavailable. WCAG exempts disabled controls from 1.4.3, so this is judgement
+     rather than a failure -- but a control naming a state of the image (`As
+     acquired`) is one the reader is meant to READ, not merely to notice is off. */
+  opacity: 1;
+  color: var(--muted-2);
+  border-color: var(--line-2);
+  cursor: not-allowed;
+}
+.tool:disabled:hover { border-color: var(--line); }
+.hint { font-size: 11px; color: var(--muted); letter-spacing: .2px; }
+
+/* The slice scrollbar: RadiAnt puts stack position on the right edge of the image. */
+.scrollbar {
+  position: absolute; top: 8px; right: 4px; bottom: 8px; width: 5px;
+  background: rgba(255,255,255,.07); border-radius: 3px; pointer-events: none;
+}
+.thumb {
+  position: absolute; left: 0; width: 5px; border-radius: 3px;
+  background: var(--accent); opacity: .75;
+}
+
+/* MOS-UI-210: the binding table, reachable without leaving the case. */
+.help {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(18,23,34,.97); border: 1px solid var(--line); border-radius: 8px;
+  padding: 18px 22px; min-width: 330px; box-shadow: 0 12px 40px rgba(0,0,0,.6);
+}
+.help h4 { margin: 0 0 12px; font-size: 12px; text-transform: uppercase; letter-spacing: .9px; color: var(--muted); }
+.help-row { display: flex; gap: 14px; align-items: baseline; padding: 3px 0; font-size: 13px; }
+.help kbd {
+  flex: 0 0 104px; text-align: right; color: var(--accent);
+  font: 600 11px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* The hint is a convenience, not content: it must never wrap into a column and steal the
+   image's width. Below a comfortable width it disappears entirely — `?` opens the full
+   binding table, which is what MOS-UI-210 actually requires be reachable. */
+.hint { white-space: nowrap; }
+@media (max-width: 1500px) { .tool-group.right { display: none; } }
+
+/* ---------- the panel grid ---------- */
+.grid { position: absolute; inset: 0; display: grid; gap: 2px; background: #000; }
+
+.vp { position: relative; overflow: hidden; background: #000; min-width: 0; min-height: 0; }
+.vp canvas { width: 100%; height: 100%; display: block; cursor: crosshair; }
+
+/* The active panel is where the keyboard and the series list act. Marked with a ring rather
+   than a colour wash so it never changes how the image itself reads. */
+.vp.active { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+.vp .empty {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--muted); font-size: 12px; letter-spacing: .3px; pointer-events: none;
+}
+
+/* Two different promises need two different badges. `sync.js` returns which one is in force:
+   position-linked means the series share a Frame of Reference and the patient coordinates
+   were matched; proportion-linked means they do not and the match is only by fraction. */
+.link-badge {
+  /* MOVED OFF THE TOP EDGE. It sat at top:8px centred, in the same band as the notice and
+     the orientation letter, and the notice is painted above it -- so the one control that
+     reports whether two panels correspond was covered by a transient. It now sits along
+     the bottom of the panel as a chip, which is where the canvas puts it and where
+     nothing else competes. */
+  position: absolute;
+  left: 10px;
+  bottom: 30px;
+  transform: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 20px);
+  padding: 6px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  font: 500 11px/1.3 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.link-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: currentColor;
+}
+.link-badge.exact {
+  background: var(--ok-fill);
+  border-color: var(--ok-line);
+  color: var(--ok-ink);
+}
+.link-badge.weak {
+  background: var(--warn-fill);
+  border-color: var(--warn-line);
+  color: var(--warn-ink);
+}
+
+/* Which panel a series occupies, shown in the series list so it reflects the grid.
+   IT SITS IN `.series-row`, pushed to the far end of it: appended to the `<li>` instead,
+   as it was, its box rose into the line above and sat on the image count. */
+.panel-tag {
+  flex: 0 0 auto; min-width: 16px; text-align: center; margin-left: auto;
+  background: var(--accent); color: #07101f; border-radius: 3px;
+  font-size: 10px; font-weight: 700; padding: 1px 4px;
+}
+.link-badge.none {
+  background: var(--panel);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+/* ---------- annotation layer ---------- */
+/* Over the canvas, never intercepting: MOS-UI-207 requires the default window/level
+   binding to stay live, and a layer that swallowed pointer events would break it the
+   moment one measurement existed. */
+.annot { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.annot-shape {
+  /* ON THE TOKEN, not a literal. `--ok-ink` is what this surface uses for a mark the
+     reader asserted. */
+  fill: none; stroke: var(--ok-ink); stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  /* THE SHAPE TAKES ITS OWN POINTER EVENTS AND THE LAYER TAKES NONE. That is what lets a
+     hit select a measurement while a miss falls through to the window-and-level drag on
+     the canvas underneath -- exactly, rather than as a race between two handlers. */
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.annot-handle {
+  fill: var(--bg);
+  stroke: var(--ok);
+  stroke-width: 1.5;
+  pointer-events: all;
+  cursor: grab;
+}
+.annot-label {
+  /* `ui-monospace, SFMono-Regular, Menlo` is an Apple stack on a stylesheet that already
+     defines --mono for exactly this. */
+  fill: var(--ok-ink); font: 600 11px/1 var(--mono);
+  paint-order: stroke; stroke: rgba(0,0,0,.85); stroke-width: 3px; stroke-linejoin: round;
+}
+
+/* THE LINE IS PROTECTED LIKE ITS NUMBER IS.
+   `.annot-label` defends itself with `paint-order: stroke`; the geometry the number
+   belongs to had nothing. A 1.5px stroke over windowed-white bone is about 1.7:1, so a
+   caliper laid across a vertebral body vanished along precisely the segment being
+   measured while its value stayed perfectly readable beside it. */
+.annot-shape, .annot-handle, .annot-cross, .annot-reference {
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, .95));
+}
+/* An in-progress measurement reads as provisional, so a reader does not take a number
+   from a drag they have not finished. */
+.annot-preview { stroke-dasharray: 4 3; opacity: .85; }
+
+/* `.meas-head` WAS DECLARED HERE TOO, 1400 lines above its other two blocks, and every
+   property it set is set again below -- except `opacity: .85`, which nothing reset. The
+   heading holds the grouping `<select>`, so that opacity multiplied a CONTROL: its border
+   composited to 1.30:1 against the rail where WCAG 1.4.11 asks for 3. The declaration is
+   gone rather than moved: what it said is said below, and what it said alone was a defect.
+   `margin-top: 0` for the first one survives with it. */
+.meas-head:first-child { margin-top: 0; }
+.linkish {
+  background: none; border: 0; color: var(--muted); cursor: pointer;
+  font-size: 13px; padding: 0 2px;
+}
+.linkish:hover { color: var(--err); }
+
+/* A PANEL SHOWING A PROJECTION, marked where the reader's eye already is.
+ *
+ * The bottom-right line says "maximum over 26 mm" in words, but that is the line a reader
+ * looks at to read a slice number -- they glance at it for a figure, not for a warning
+ * about what the picture is. The label corner carries a standing marker so the state is
+ * legible without reading anything: a slab is on in THIS panel and not in the one beside
+ * it, which is how a MIP is normally read. */
+.hud-tl.projecting::after {
+  content: 'PROJECTION';
+  margin-left: .5rem;
+  padding: 0 .35rem;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: .72em;
+  letter-spacing: .08em;
+  opacity: .85;
+}
+
+/* ORIENTATION MARKERS at the four edge midpoints.
+ *
+ * Larger and brighter than the rest of the HUD on purpose: these are the only marks on
+ * screen that distinguish the patient's left from their right, and every other readout is
+ * recoverable from the header while this one is what the reader checks the header AGAINST.
+ *
+ * `pointer-events: none` throughout the HUD already, so they never take a drag. */
+.hud-edge {
+  /* THE COMMENT ABOVE SAYS "larger and brighter than the rest of the HUD on purpose ...
+     the only marks on screen that distinguish the patient's left from their right".
+     They were larger and DIMMER: --ink-3 inherited from `.hud`, the same colour as the
+     series description, then multiplied by .92. The one mark that carries laterality was
+     the quietest thing in the corner it shares. Dropping the opacity also lets the halo
+     reach full strength under the glyph. */
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--ink);
+  opacity: 1;
+}
+/* THE PICTURE IS NOT A PARAGRAPH.
+   `dir="rtl"` turns the chrome around -- rails, menus, tables, the order things are read
+   in -- and that is what a reader of Arabic expects. It must not turn the IMAGES around.
+   A panel is a POSITION in a hanging protocol: "prior on the left, current on the right"
+   is a departmental agreement that reaches teaching material, correspondence between
+   readers and the DICOM Hanging Protocol IOD, where positions are absolute. Measured in
+   Arabic at 1024 in a 2x2, the grid inherited `rtl` and put panel 0 in the right column.
+
+   Inside a panel nothing had mirrored -- `.hud-left` is `left: 12px` and stays on the
+   picture's physical left, which is the one thing that must never flip, because `R` and
+   `L` are the patient's sides and not the reader's. The grid is now the same kind of
+   thing: positional.
+
+   `unicode-bidi: plaintext` takes each HUD string's direction from its own first strong
+   character, so an Arabic series description still reads right-to-left inside a box that
+   sits where the anatomy is. */
+#grid { direction: ltr; }
+#grid .hud,
+/* AND ANYTHING INSIDE A PANEL A READER TYPES INTO OR READS AS A SENTENCE. Pinning
+   the grid to `ltr` is right for the picture and wrong for a note: an Arabic note
+   typed into an LTR field puts the caret and the punctuation on the wrong side.
+   Plaintext takes the direction from what is actually in the box. */
+#grid .note-input,
+#grid .empty { unicode-bidi: plaintext; }
+/* THE ALIGNMENT STAYS WITH THE BOX THAT CHOSE IT. `text-align: start` was on the line
+   above, and `#grid .hud` outranks `.hud-br` by an id: measured live, `.hud-br` computed
+   `start` instead of its own `right`. One line of readout hides it -- the box shrinks to
+   its text -- and a wrapped one does not: the second line rags to the wrong side. Only the
+   two boxes that hold a SENTENCE take their alignment from the reading direction. */
+#grid .note-input,
+#grid .empty { text-align: start; }
+
+.hud-top    { top: 10px;    left: 50%; transform: translateX(-50%); }
+.hud-bottom { bottom: 10px; left: 50%; transform: translateX(-50%); }
+.hud-left   { left: 12px;   top: 50%;  transform: translateY(-50%); }
+.hud-right  { right: 12px;  top: 50%;  transform: translateY(-50%); }
+
+/* Not a letter, and it must not read as one. The sentence is small, dim and unbold so it
+ * cannot be mistaken for an anatomical marker at a glance. */
+.hud-edge.unknown {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  opacity: .7;
+  font-style: italic;
+}
+
+/* THE SCALE BAR. Bottom-centre, clear of the edge markers at the four midpoints and of the
+ * four corner readouts — it is the only HUD element that occupies width rather than sitting
+ * at a point, so it gets the one region nothing else uses. */
+.hud.scale {
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+/* End ticks, so the bar's extent is unambiguous. A plain line invites the reader to
+ * include or exclude its ends, and at 10 mm that is a 10% error in what they estimate. */
+.scale-line {
+  height: 7px;
+  border-left: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  box-sizing: border-box;
+}
+.scale-mm { font-size: 11px; letter-spacing: .02em; }
+
+/* The scale bar's absence. No rule, no line: the sentence stands alone where the bar would
+ * have been, in the same dim italic the orientation markers use for the same reason. */
+.hud.scale.unknown .scale-line { border: none; height: 0; }
+.hud.scale.unknown .scale-mm { font-style: italic; opacity: .7; }
+
+
+/* =====================================================================================
+ * Focus, which this stylesheet had none of.
+ *
+ * Nothing here was keyboard-reachable in appearance even where it was reachable in fact:
+ * 392 lines and not one `:focus-visible` rule, so a reader tabbing through the toolbar
+ * saw the browser default at best and nothing at all where a reset removed it. The ring
+ * is the accent at full strength with an offset, so it survives on both the chrome and
+ * the black viewport.
+ * ===================================================================================== */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+.tool:focus-visible,
+.linkish:focus-visible,
+.series-item:focus-visible,
+.study:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* A separator between groups of controls, so a wrapped toolbar still reads as groups
+   rather than as forty loose buttons. */
+.tool-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--line-3);
+  margin: 0 5px;
+  flex: 0 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+
+/* ------------------------------------------------------------------ the series rail */
+
+/* The thumbnail. Black, because what it previews is black, and a mid-grey placeholder
+   would read as a loaded image of nothing rather than as an image not yet drawn. */
+.series-thumb {
+  display: block;
+  width: 100%;
+  height: 78px;
+  background: #000;
+  border-radius: 2px;
+  overflow: hidden;
+  object-fit: contain;
+}
+.series-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+.series-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 1px;
+  background: var(--muted-2);
+}
+.series-dot.mod-CT  { background: var(--accent); }
+.series-dot.mod-MR  { background: #c259e6; }
+.series-dot.mod-PT  { background: #d97757; }
+.series-dot.mod-SEG { background: var(--ok); }
+.series-dot.mod-SR  { background: var(--warn); }
+.series-count {
+  /* HOW A READER TELLS A 3-IMAGE SCOUT FROM A 480-IMAGE VOLUME -- the discriminating fact
+     in the whole left rail, and it was 9.5px in the quietest colour on the surface. */
+  display: block;
+  margin-top: 2px;
+  font: 400 11px/1 var(--mono);
+  color: var(--muted);
+}
+
+/* `.rail-study*` STOOD HERE, styling a block in the left rail that printed the study's
+   date, modality, description and series count. The block is gone: the `Study` panel in
+   the right rail carries all four, with the patient, the id and the accession besides,
+   and two sections of one title describing one study is one too many. The rules went with
+   the markup rather than staying behind as a description of a layout this surface no
+   longer has -- four of those were found and removed today. */
+
+
+/* ------------------------------------------------------------------ the HUD corners */
+
+/* THE VALUE UNDER THE CURSOR GETS ITS OWN COLOUR. It is the one number on the image that
+   is read continuously while the mouse moves, and in --ink-3 it sat in the same register
+   as the series description above it. Mono, so the digits do not reflow. */
+.hud-bl {
+  bottom: 8px;
+  left: 10px;
+  font: 500 13px/1.3 var(--mono);
+  color: var(--hu);
+}
+
+/* The patient, top right, over the image rather than only in a rail. This is where a
+   reader checks they are looking at who they think they are looking at, and it was the
+   one thing this surface never said. */
+.hud-tr {
+  top: 8px;
+  right: 14px;
+  text-align: right;
+}
+/* `.hud-tr .who` AND `.hud-tr .id` STOOD HERE AND MATCHED NOTHING. Verified on the live
+   tree: `document.querySelectorAll('.hud-tr .who, .hud-tr .id')` is empty, and no markup
+   in this repository puts either class inside a panel's top-right corner -- the patient's
+   name lives in the header banner (`.who-name`, `.who-meta`) and the panel's label corner
+   is `.hud-tl`. Two rules describing a layout this surface does not have. */
+
+/* THE ACTIVE PANEL, and it must be visible from the far edge of a 2x2 on a diagnostic
+   monitor. A 1px outline at --accent was invisible at arm's length against black. */
+.vp.active { outline: 1px solid var(--accent); outline-offset: -1px; }
+.vp.active::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+
+/* =====================================================================================
+ * The patient banner, and the standing RUO mark beside it.
+ * ===================================================================================== */
+.who-banner {
+  /* THE BANNER YIELDS BEFORE THE TOOLBAR DOES.
+     Both were `flex: 1 1 auto` in one non-wrapping row, so they shrank together and the
+     toolbar -- which cannot ellipsize, only clip -- lost buttons silently. This banner
+     already truncates with an ellipsis, which is a visible, recoverable way to run out of
+     room, so it is the one that should give. `min-width` keeps the patient's name legible
+     rather than letting it collapse to nothing. */
+  flex: 1 1 0;
+  min-width: 190px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  overflow: hidden;
+}
+.who-name {
+  font: 500 13px/1 var(--sans);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 0 1 auto;
+}
+.who-meta {
+  font: 400 11px/1 var(--mono);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* The identifier string gives way before the patient's NAME does. */
+  flex: 1 1 0;
+}
+.ruo {
+  flex: 0 0 auto;
+  font: 600 10px/1 var(--sans);
+  letter-spacing: .9px;
+  color: #04070f;
+  background: var(--warn);
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+.bar-right { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 11px;
+  background: transparent;
+  border: 1px solid var(--line-ctl);
+  border-radius: 3px;
+  color: var(--ink-2);
+  font: 500 12px/1 var(--sans);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.ghost:hover { border-color: var(--accent); color: var(--ink); }
+
+
+/* =====================================================================================
+ * The icon toolbar, in the header.
+ *
+ * WHY ICONS, AND WHY HERE. This surface put 39 text buttons in one wrapping row above the
+ * image: five rows and 142px of chrome at 1024, three rows and 76px at 1920, on a screen
+ * whose entire purpose is the picture underneath. Every product this replaces uses a
+ * single row of glyphs, because a toolbar is reached by muscle memory after the first
+ * hour and a word is slower to find than a shape once you know where it is.
+ *
+ * WHAT STAYED TEXT. Only the VERBS moved -- the things that change what the mouse does, or
+ * do something once. A plane, a window preset and a slab thickness are VALUES, and a value
+ * whose name is "Mediastinum" or "Sagittal" has no glyph that beats the word. Drawing one
+ * would be decoration that costs a tooltip to read.
+ * ===================================================================================== */
+.bar-tools {
+  /* CLIPPED FROM ONE END, NOT BOTH -- and only after the banner has yielded.
+     `.bar-tools` and `.who-banner` were both `flex: 1 1 auto`, so they shrank together;
+     with `justify-content: center` and `overflow: hidden` the toolbar was cut at BOTH
+     edges, silently. Measured at 1600px with a banner: four buttons gone -- Length and
+     Angle off the left, Capture and Export off the right -- with nothing on screen saying
+     a control existed. The banner already ellipsizes, so it is the one that should give. */
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  overflow: hidden;
+}
+/* THE OVERFLOW CONTROL LIVES BESIDE THE CLIPPING BOX, NOT IN IT.
+   Inside `.bar-tools` it would be the first thing `overflow: hidden` took away, which is
+   the one failure this control exists to prevent. `flex: 0 0 auto` because it never gives
+   up its 30px -- the row can lose any tool before it loses the way to reach the tools. */
+.bar-more-wrap { position: relative; flex: 0 0 auto; display: flex; align-items: center; }
+.bar-more-wrap:empty { display: none; }
+.bar-more[hidden] { display: none; }
+/* A TOGGLE THAT IS ON SAYS SO IN THE MENU TOO. The button it stands for wears the accent
+   when engaged; an entry that dropped that would be the same control reading differently
+   depending on whether the window is wide. */
+.chrome-menu-item[data-on] { color: var(--accent); }
+
+.itool {
+  /* `<button>` без объявленного кегля берёт дефолт браузера — 13.3333px в Chrome. Текста
+     в этих кнопках нет, так что на вид это ничего не меняло, но в системе появлялась
+     четырнадцатая ступень, которую никто не выбирал, и любой текст, добавленный сюда
+     позже, сел бы на неё. */
+  font: 400 12px/1 var(--sans);
+  width: 30px;
+  height: 28px;
+  margin: 0 1px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: #b6c6dc;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+}
+.itool:hover:not(:disabled) { background: #12203a; color: var(--ink); }
+.itool.on { background: var(--tool-on); color: #ffffff; }
+.itool.on:hover { background: #158b9c; }
+/* NOT AVAILABLE, STILL LEGIBLE. At opacity .32 the glyph composited to 2.11:1 -- below
+   the point where its shape can be made out, so the reader could not tell WHICH control
+   was unavailable. WCAG exempts disabled controls from 1.4.3, so this is a judgement
+   rather than a failure: the state is carried by hue and border weight instead of by
+   fading toward the background. --muted-2 is 4.98:1 on --panel, and unmistakably
+   quieter than the enabled 11.19:1. */
+.itool:disabled { opacity: 1; color: var(--muted-2); cursor: not-allowed; }
+.itool svg { width: 19px; height: 19px; display: block; }
+
+/* The secondary bar keeps the value choices, and is what the old `.tools` row becomes. */
+.tools {
+  gap: 10px;
+  padding: 5px 10px;
+}
+.tool-group { gap: 3px; }
+
+
+/* =====================================================================================
+ * The right rail: what was found in the study.
+ * ===================================================================================== */
+.aside {
+  width: var(--w-aside);
+  flex: 0 0 var(--w-aside);
+  min-width: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--line-2);
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+.aside h3 {
+  margin: 0;
+  height: 28px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-top: 1px solid var(--line);
+  font: 500 11px/1 var(--sans);
+  /* THE ACCENT IS RESERVED FOR STATE. The palette gives it three jobs -- "section
+     headings, focus, the active panel's edge" -- which were compatible when the rail held
+     three sections. It now holds five, so five standing labels wore the colour that also
+     means "this one is selected". The band, the rule and the 28px height carry the
+     structure; the colour was carrying selection. */
+  color: var(--muted);
+}
+
+/* A segment is a colour and a name, on one line, with how it was produced at the end.
+   It wrapped to four lines in a 290px rail because the swatch, the label and the
+   "AUTOMATIC" mark were all in the flow at the same weight. */
+.segments { padding: 8px 10px 10px; gap: 0; }
+.segments li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  padding: 2px 0;
+  font: 400 11px/1.35 var(--sans);
+  color: var(--ink);
+}
+.segments li .swatch {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+/* THE LABEL TAKES THE SLACK AND CLIPS; THE PROVENANCE MARK KEEPS ITS WIDTH.
+   `:nth-child(2)` named the algorithm span, because the label was a bare text node --
+   so the fact that a segment came from a MODEL was the first thing to be squeezed. */
+.segments li .seg-label {
+  flex: 1 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.segments li .muted:last-child {
+  flex: 0 0 auto;
+  font: 400 10px/1 var(--mono);
+  color: var(--muted);
+  letter-spacing: .2px;
+}
+/* How the segmentation was made, in the register of a fact about the data rather than a
+   label on it: (0062,0008) SegmentAlgorithmType is the archive's word, not ours. */
+.segments li .algo,
+.segments li .muted:last-child {
+  flex: 0 0 auto;
+  font: 400 10px/1 var(--mono);
+  color: var(--muted-2);
+  letter-spacing: .3px;
+}
+
+.measurements { padding: 8px 10px 10px; }
+.meas { width: 100%; border-collapse: collapse; }
+/* --ink-3 is the HUD token, sized to survive a text-shadow over the image. A label in
+   a rail is not that; --ink-2 is the token for labels and button text. */
+.meas td { font: 400 11px/1.85 var(--sans); color: var(--ink-2); vertical-align: baseline; }
+/* THE CLINICAL PAYLOAD IS THE MOST LEGIBLE THING IN THE ROW.
+   `.meas .num` at line 275 asks for weight 600; this rule's `font:` shorthand reset it
+   to 400, so '109.7 mm' and 'nodule RUL' were the same size, the same weight, and --ink
+   against --ink-3 -- a luminance ratio of 1.22:1, which is to say the same brightness.
+   The only thing separating the measurement from its name was where it sat. */
+.meas .num {
+  font: 600 13px/1.7 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink); text-align: right;
+}
+.meas .unit { text-align: right; width: 34px; padding-left: 6px; }
+.meas-head {
+  /* ONE BLOCK, because three of them 1400 lines apart is how a property nobody wanted
+     survived two rewrites. The flex line came from the third. */
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 0 5px;
+  font: 500 10px/1 var(--sans);
+  color: var(--ink-2);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.meas-head:not(:first-child) { margin-top: 12px; }
+.meas-head .muted { font-weight: 400; color: var(--muted-2); }
+
+/* The remove control. It was a 12x15px glyph -- WCAG 2.2 SC 2.5.8 asks for 24x24, and a
+   control that deletes a measurement is a poor place to be stingy about the target. */
+.linkish {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  color: var(--muted-2);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+}
+.linkish:hover { background: var(--warn-fill); color: var(--warn); }
+
+
+/* An SR concept name can be a sentence -- "Equivalent spherical diameter of a detected
+   candidate" -- and three wrapped lines per row turns a table of numbers into a wall of
+   prose. Two lines, then clipped, with the whole name on hover and in the title. The
+   NUMBER is what the table is for and it never wraps. */
+/* THE CLAMP MOVED OFF THE CELL AND ONTO A SPAN INSIDE IT.
+   Setting `display` on a `<td>` takes it out of the table formatting context: measured,
+   this cell computed `flow-root` -- neither `-webkit-box` nor `table-cell` -- so it
+   stopped stretching to the row. On a SELECTED row the value cell was 40px tall from the
+   row's top while the label cell was 22px, and the highlight and the divider each broke
+   into two misaligned pieces. The clamp is still wanted; a cell is just the wrong place
+   for it. */
+.meas td:first-child { line-height: 1.35; padding: 3px 0; }
+.meas .meas-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.35;
+}
+.meas .num, .meas .unit { white-space: nowrap; }
+
+
+/* The statement itself, so the grid has three children rather than two and a loose node. */
+/* AND THE SECOND COPY OF `nowrap`, which is why removing the first one changed nothing.
+   Two rules set `white-space` on this element from 370 lines apart; the computed style
+   still read `nowrap` after the later rule dropped it, and at 320px the sentence held the
+   layout viewport open at 718px on its own. A grep for the selector found both; a grep
+   for the rule that looked like the culprit found one. */
+.foot-statement { grid-column: 2; }
+
+
+/* =====================================================================================
+ * The value bar, after the verbs left it.
+ *
+ * What remains is the choices that belong to the panel in front of you: which plane, how
+ * thick a slab, which window. They are words because their names are what identifies them.
+ * Smaller and tighter than the header's controls, because this is the second-most
+ * important row on the surface and the picture is the first.
+ * ===================================================================================== */
+.tools .tool {
+  height: 24px;
+  padding: 0 8px;
+  font: 500 11px/1 var(--sans);
+}
+.tools { gap: 8px; padding: 4px 10px; }
+.tools .tool-group { gap: 2px; }
+.hint { font: 400 11px/1 var(--sans); color: var(--muted-2); }
+
+/* The glyph groups sit inline in the header row. */
+.bar-tools .tool-group { display: inline-flex; align-items: center; gap: 0; }
+
+
+/* =====================================================================================
+ * The worklist.
+ *
+ * A TABLE, because the reader is scanning one column to find one row. Seven stacked cards
+ * make them read seven fields to reject each study; a column lets them reject twenty at a
+ * glance. This is the first screen anyone sees and it was the weakest one on the surface.
+ * ===================================================================================== */
+.panel { flex: 1; padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+
+.wl-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 12px 16px 10px;
+  /* THE LAST 60px OF THE REFLOW TARGET. Heading, count and "clear filters" in one
+     unwrappable row needed 350px, which held the page 60px wider than the 320 WCAG 1.4.10
+     names. `wrap` costs nothing above that width -- a flex line only breaks when it has
+     to -- so every layout that fit before is untouched. */
+  flex-wrap: wrap;
+}
+/* ЗАГОЛОВОК ЭКРАНА берёт верхнюю ступень шкалы. На 15px он спорил с латеральностью
+   на снимке — а это единственная метка, различающая стороны пациента, и она должна
+   быть крупнейшим текстом, который видит читающий. */
+.panel h2 { margin: 0; font: 600 18px/1.2 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
+.wl-count { font: 400 11px/1 var(--mono); color: var(--muted); flex-grow: 1; }
+
+/* THE LIST IS A COLUMN, AND ON A WIDE SCREEN THE COLUMN IS CENTRED.
+   The table is shrink-wrapped on purpose -- see the rule below, and the measurement in it
+   about a name and an image count 1610px apart. But shrink-wrapped content in a
+   full-width box does not sit in the middle of it, it sits at the LEFT of it: measured at
+   a 1641px window the table left 16px of gutter on one side and 156px on the other, and
+   on a 2000px monitor that second figure is about 500. The heading row and the pager,
+   which DO span the full width, then ended a third of a screen to the right of the last
+   column they belong to.
+   SO THE BOX IS CENTRED AND THE CONTENT STAYS LEFT INSIDE IT, which is how a worklist
+   reads: the eye returns to one left edge down the page, and that edge is no longer
+   pinned to the window's.
+   `--w-worklist` IS MEASURED, NOT PICKED, and it has been measured twice -- the token's
+   own comment carries the arithmetic and why the first value went stale. `.wl-desc` caps
+   a description at 320px and `.wl-id` caps an identifier at 200px, so the total cannot
+   run away. Wider than the token and the column centres; narrower and it fills, exactly
+   as before. */
+.wl-head,
+.wl-wrap,
+.wl-foot {
+  width: 100%;
+  max-width: var(--w-worklist);
+  margin-inline: auto;
+}
+
+/* THE PAGER FOLLOWS THE LAST ROW, NOT THE BOTTOM OF THE WINDOW.
+   `flex: 1 1 auto` made this scroller claim every pixel the column had left, so nineteen
+   studies -- a 677px table -- sat above 429px of nothing with the pager at the far edge of
+   it. A list that ends and then leaves a screen of empty space below its last row reads as
+   one that has not finished loading.
+   `0 1 auto` takes the content's height and shrinks when there is less room than content;
+   `overflow: auto` still scrolls the long case, which is the only case the old value was
+   right about. */
+.wl-wrap { flex: 0 1 auto; min-height: 0; overflow: auto; padding: 0 16px; }
+
+.wl {
+  /* SHRINK-WRAPPED, NOT STRETCHED. At `width: 100%` on a 1680px window the eight columns
+     absorbed 434px of slack and a row spanned 1648px -- a patient's name and their image
+     count 1610px apart, with the eye tracking across empty space to connect them. `auto`
+     still fills the width when the content needs it, and the 860px floor below still
+     forces the honest horizontal scrollbar when it does not. */
+  width: auto;
+  border-collapse: collapse;
+  /* BELOW THIS THE TABLE SCROLLS RATHER THAN CRUSHES. Without a floor the browser keeps
+     shrinking columns until an MRN wraps over three lines and every row is a different
+     height, which destroys the one thing a table is for -- scanning down a column. A
+     horizontal scrollbar is the honest degradation. */
+  min-width: 860px;
+}
+.wl td.tech, .wl th { white-space: nowrap; }
+.wl th, .wl td { text-align: left; padding: 0 10px; }
+.wl th:first-child, .wl td:first-child { padding-left: 8px; }
+.wl .num, .wl th.num { text-align: right; }
+
+/* The header sticks: a worklist is scrolled, and a column you cannot name is a column you
+   have to count across to identify. */
+/* SCOPED TO THIS TABLE'S OWN HEADER ROW.
+   `.wl thead th` also matched the <thead> of the `.wl-series` table that `worklistSubRow`
+   nests inside an expanded row, so that sub-header was sticky at top:0/z-index:2 in the
+   same scroll container. Measured: scroll past an expanded study and the band at the top
+   of the list reads "Description | Series | Modality | Instances" while the filter row
+   below it still labels the worklist -- the name box sitting under a heading that says
+   "Description". */
+.wl > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 28px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  font: 500 11px/1 var(--sans);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.wl-sort {
+  /* THE WHOLE HEADER CELL IS THE TARGET. The button was 11px tall inside a 28px cell, so
+     the pointer had to land on the text itself -- a third of the affordance the header
+     looks like it offers, and well under the 24px this file cites elsewhere. Found by
+     measuring every button on the page, not by reading the rule. */
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.wl-sort:hover { color: var(--ink); }
+.wl-sort.on { color: var(--accent); }
+/* The direction is drawn from borders rather than typed, so it cannot depend on a glyph
+   the font happens not to carry. */
+.wl-sort::after {
+  content: "";
+  width: 0; height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  opacity: 0;
+}
+.wl-sort[data-dir="asc"]::after  { border-bottom: 4px solid currentColor; opacity: 1; }
+.wl-sort[data-dir="desc"]::after { border-top: 4px solid currentColor; opacity: 1; }
+
+.wl-filters td {
+  position: sticky;
+  top: 28px;
+  z-index: 1;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  padding: 5px 6px 7px;
+}
+.wl-filters input,
+.wl-filters select {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 7px;
+  background: var(--bg);
+  border: 1px solid var(--line-ctl);
+  border-radius: 3px;
+  color: var(--ink);
+  font: 400 11px/1 var(--sans);
+}
+.wl-filters input::placeholder { color: var(--muted-2); }
+.wl-filters input:focus, .wl-filters select:focus { border-color: var(--accent); }
+.wl-dates { white-space: nowrap; }
+.wl-dates input { width: calc(50% - 3px); display: inline-block; }
+.wl-dates input + input { margin-left: 4px; }
+
+.wl tbody tr {
+  cursor: pointer;
+  border-bottom: 1px solid var(--line-2);
+}
+.wl tbody tr:hover { background: var(--panel-2); }
+.wl tbody td {
+  height: 32px;
+  font: 400 12px/1.3 var(--sans);
+  color: var(--ink-2);
+}
+.wl tbody .tech { font: 400 11px/1.3 var(--mono); color: var(--muted); }
+.wl tbody .num { font-variant-numeric: tabular-nums; }
+/* 16px TALL, AND THAT IS ALLOWED HERE. SC 2.5.8's "Equivalent" exception: the whole
+   34px row carries the same `openStudy(uid)` (see `tr.onclick`), so the pointer has a
+   target well over 24px and this button is the keyboard's way to the same action. It is
+   left at text height deliberately -- padding it out would push the row past the 34px the
+   density argument is built on, for a pointer affordance that already exists. */
+.wl-open {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  font: 500 12px/1.3 var(--sans);
+  cursor: pointer;
+  text-align: left;
+}
+.wl-open:hover { color: var(--accent-hi); }
+.wl-desc {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* THE SAME DECISION, FOR THE COLUMN THAT NEEDED IT MORE.
+   Measured across nineteen studies: the ID column rendered at 381px -- the widest in the
+   table -- carrying eleven distinct values, because eight of the CT studies share one
+   56-character hash. `Study date`, which distinguishes all nineteen, got 196px. Width was
+   allocated in inverse proportion to information, and the first thing the eye met on the
+   worklist was a grey block of repeated identifiers.
+   A patient ID is an exact-match key: it is typed into the filter or compared character by
+   character against a worklist elsewhere, and neither needs it laid out full-width. The
+   full value stays reachable -- `app.js` puts it on the cell's `title`, and the filter
+   matches the whole string, not the visible part. */
+.wl-id {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wl .tags { color: var(--accent); font: 400 11px/1.3 var(--mono); letter-spacing: .3px; }
+/* A ROW THAT IS NOT A STUDY, and it has to OUT-RANK `.wl tbody td` (0,1,2).
+   `.muted`, `.err` and the old `.wl-empty` are all (0,1,0) and every one of them lost:
+   measured, the archive-unreachable cell computed --ink-2 rather than --err, 32px rather
+   than 80, text-align left rather than centre -- and kept the study row's pointer cursor
+   and hover. An archive that is DOWN rendered as a study you could click. */
+.wl tbody tr.wl-note { cursor: default; }
+.wl tbody tr.wl-note:hover { background: none; }
+.wl tbody tr.wl-note > td {
+  height: 96px;
+  text-align: center;
+  vertical-align: middle;
+  color: var(--muted);
+  font: 400 13px/1.5 var(--sans);
+}
+.wl tbody tr.wl-note-err > td { color: var(--err); }
+.wl-note-tech {
+  display: block;
+  margin-top: 6px;
+  font: 400 11px/1.4 var(--mono);
+  color: var(--muted-2);
+  word-break: break-all;
+}
+
+/* THE EXPANSION. A study row opens onto the series it holds, so the reader chooses a
+   series where the choice is actually made rather than after opening the study. */
+.wl-x { width: 28px; }
+.wl-expand {
+  /* 24x24, the size this file adopted for `.linkish` when it cited WCAG 2.2 SC 2.5.8 by
+     name. `.wl-x` is 28px wide and the row is 32px tall, so it fits without moving
+     anything. */
+  width: 24px; height: 24px; padding: 0; border: 0; background: none;
+  cursor: pointer; position: relative; color: var(--ink-2);
+}
+/* DRAWN, NOT TYPED, AND DRAWN ONCE. This was a 6x6 box with two borders turned 45
+   degrees -- the fourth copy of a chevron the icon set already had. The set's is used
+   here, at the stroke width every other glyph on this surface uses, and the rotation is a
+   quarter turn rather than an eighth because the set draws it pointing down. */
+.wl-expand-mark {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  transform: rotate(-90deg); transition: transform 120ms ease;
+}
+.wl-expand-mark svg { width: 12px; height: 12px; }
+.wl-expand[aria-expanded="true"] .wl-expand-mark { transform: none; }
+/* THE OTHER TWO DISCLOSURES MIRROR AS WELL. The rail fold got its RTL rule and these
+   two, built from the same border trick, did not -- so a collapsed row pointed back
+   into the text rather than toward what it would open. */
+[dir="rtl"] .wl-expand-mark { transform: rotate(90deg); }
+[dir="rtl"] .wl-expand[aria-expanded="true"] .wl-expand-mark { transform: none; }
+.wl-expand:hover { color: var(--ink); }
+.wl-expand:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* THE EXPANSION BELONGS TO THE ROW ABOVE IT, and three things said otherwise.
+   The 28px indent never applied -- `.wl td:first-child { padding-left: 8px }` is (0,2,1)
+   and out-ranks `.wl-sub > td` at (0,1,1), so the measured padding was `0 0 6px 8px` and
+   the block started flush with the table edge, reading as a second unrelated table
+   dropped into the list. `--panel` is 1.09:1 against `--bg`, so it had no visible edge
+   either. And `.wl tbody tr { cursor: pointer }` put a hand cursor over a block with
+   nothing to click. The accent rail ties the series to the study that holds them. */
+.wl tbody tr.wl-sub { cursor: default; }
+.wl tbody tr.wl-sub:hover { background: none; }
+.wl tbody tr.wl-sub > td {
+  height: auto;
+  padding: 2px 12px 10px 38px;
+  background: var(--panel);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+[dir="rtl"] .wl tbody tr.wl-sub > td {
+  padding: 2px 38px 10px 12px;
+  box-shadow: inset -2px 0 0 var(--accent);
+}
+
+/* THE ROW THE READER CAME BACK FROM, so returning to a 200-study list does not mean
+   re-finding your place by patient name. */
+.wl tbody tr.wl-seen > td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+[dir="rtl"] .wl tbody tr.wl-seen > td:first-child { box-shadow: inset -2px 0 0 var(--accent); }
+.wl-series { width: 100%; border-collapse: collapse; font-size: 11px; }
+.wl-series th {
+  text-align: left; font-weight: 600; color: var(--ink-2);
+  padding: 4px 8px; border-bottom: 1px solid var(--line);
+}
+.wl-series td { padding: 3px 8px; }
+.wl-series tbody tr { cursor: pointer; }
+.wl-series tbody tr:hover { background: var(--panel-2); }
+.wl-series tbody tr:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.wl-sdesc { color: var(--ink); }
+
+.wl-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px 14px;
+}
+.wl-page { font: 400 11px/1 var(--mono); color: var(--muted); min-width: 70px; text-align: center; }
+
+/* A label that exists for a screen reader and not for the eye. The filter row is seven inputs
+   with placeholders, and a placeholder is not a label: it disappears the moment you type. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* =====================================================================================
+ * A measurement you can take hold of.
+ *
+ * THE LAYER STAYS `pointer-events: none` AND THE SHAPES DO NOT. That is the whole trick:
+ * an overlay that takes pointer events everywhere would swallow the left-drag that sets
+ * window and level across the entire image, which is the gesture a reader uses more than
+ * any other. Only the stroke of a shape and the disc of a handle are targets; every pixel
+ * between them falls through to the canvas exactly as before.
+ * ===================================================================================== */
+.annot-shape.annot-preview { pointer-events: none; }
+
+.annot-handle-on { stroke: var(--accent); stroke-width: 2; }
+.annot-handle:hover { stroke: var(--accent-hi); }
+.annot-handle:active { cursor: grabbing; }
+
+/* The selected measurement, so the reader can see WHICH one the panel row and the handles
+   belong to. Brighter rather than a different colour: a measurement's colour already
+   means something (it is the reader's, not the model's). */
+/* --accent IS EXACTLY `.annot-reference`'s BLUE. `annotations.js` draws reference lines
+   under measurements for a stated reason -- "a caliper is the reader's own assertion
+   and a reference line is the geometry's" -- and selecting one then repainted it in
+   the other's colour, throwing that distinction away at the moment the reader was
+   working on it. Selection is carried by WEIGHT instead. */
+.annot-selected { stroke: var(--ok-ink); stroke-width: 2.5; }
+
+/* While a handle is being dragged the whole layer takes events, so the pointer cannot
+   escape the handle by moving faster than the redraw. */
+/* THE CURSOR COMES FROM THE BODY, BECAUSE THE LAYER CANNOT GIVE IT.
+   This was `.annot.dragging { pointer-events: all; cursor: grabbing; }` and neither half
+   could fire. `annotations.js` sets `this.svg.style.pointerEvents = 'none'` INLINE, which
+   outranks any rule here -- deliberately: the comment beside it cites MOS-UI-207, window
+   and level have to work the moment a case opens, and a layer that takes pointer events
+   breaks that as soon as one measurement exists. And an element outside hit-testing is not
+   asked for its cursor either, so `grabbing` never showed; the canvas underneath answered.
+   `body.rail-dragging` above does the same job for the splitter. */
+body.annot-dragging { cursor: grabbing; }
+
+/* The selected row in the measurements table, and the row under the cursor. */
+.meas tr.on td { background: var(--accent-fill); }
+.meas tr:hover td { background: var(--panel-2); }
+.meas tr { cursor: pointer; }
+
+
+/* =====================================================================================
+ * The crosshair: where the reader is looking, on every panel that can say.
+ * ===================================================================================== */
+.annot-cross {
+  stroke: var(--hu);
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+/* OFF THIS PLANE IS A DIFFERENT THING, not a fainter version of the same one. Dashed, so
+   it cannot be mistaken for the solid cross at a glance, and in the warning hue because
+   that is what this surface already uses for "true, but not what you think". */
+.annot-cross-off {
+  stroke: var(--warn);
+  stroke-dasharray: 3 3;
+}
+.annot-cross-label,
+.annot-cross-absent {
+  fill: var(--warn);
+  font: 400 11px/1 var(--sans);
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.annot-cross-absent { fill: var(--muted); }
+
+
+/* The MOS-SAFE-001 statement and the research-use marking sit together in the
+   footer. The statement leads because it is the one the specification names; the
+   research-use line is dimmed but not hidden -- a marking nobody can read is not a
+   marking. Neither collapses at small widths: `.foot` may scroll before either
+   truncates. */
+/* NEITHER LINE MAY LEAVE THE SCREEN, AND `nowrap` WAS HOW BOTH OF THEM DID.
+   The comment above says "`.foot` may scroll before either truncates", and at 200% zoom
+   that is exactly what happened: at an 820px viewport the research-use marking ran to
+   x=1194, 374px past the right edge, reachable only by scrolling sideways. Truncation was
+   the failure this guarded against and it swapped it for a worse one -- MOS-UI-008 binds
+   the statement to a PERSISTENTLY REACHABLE footer, and off-screen is not reachable. It
+   is also WCAG 1.4.4 and 1.4.10, and the reader who zooms to 200% is precisely the reader
+   this marking is for.
+   WRAPPING NEEDS NO BREAKPOINT. Where there is room the lines do not wrap, so every wide
+   layout looks exactly as it did; where there is not, the footer grows instead of the
+   page. `.foot` carries `min-height` rather than `height` for the same reason. */
+.foot-statement { min-width: 0; }
+.foot-ruo {
+  min-width: 0;
+  justify-self: end;
+  /* A COLOUR STEP, NOT AN OPACITY. --warn-foot on --panel is 5.1:1 -- still visibly
+     the quieter of the two lines, and still above the floor. */
+  opacity: 1;
+  color: var(--warn-foot);
+}
+
+/* BELOW 1240px THE TWO SAFETY LINES DO NOT FIT ON ONE ROW, and that number is measured
+   rather than chosen: the statement renders 707px wide and the research-use marking
+   445px, IN EVERY LANGUAGE, because neither of them is ever translated. 707 + 445 + two
+   16px gaps + 24px of padding is 1208.
+
+   So below that the footer stacks. It grows downward instead of pushing either sentence
+   off the side of the page -- which is what `white-space: nowrap` did, and at 200% zoom,
+   where an 820px viewport put the marking's right edge at x=1194. MOS-UI-008 binds that
+   statement to a PERSISTENTLY REACHABLE footer, and the reader who zooms to 200% is
+   exactly the reader the marking is for.
+
+   `--h-foot` grows with it so `.dlg-back` still stops at the footer's top edge; `.foot`
+   also carries a z-index above the scrim, so the two do not have to agree exactly. */
+@media (max-width: 1239px) {
+  :root { --h-foot: 56px; }
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    row-gap: 2px;
+    padding: 4px 12px;
+  }
+  .foot-tech,
+  .foot-statement,
+  .foot-ruo {
+    flex: 1 1 100%;
+    text-align: center;
+    justify-self: auto;
+  }
+}
+
+/* AND THE HEADER, WHICH NEEDS 380px IN ONE ROW AND WAS GIVEN 320.
+   Measured the same way as the footer: `.bar-right` -- the RUO mark and the gear -- ended
+   at x=380 in a 320px viewport and held the layout viewport open by itself. 420 is that
+   380 with room to spare. Above it the header is untouched: a flex line only breaks when
+   it has to, and `min-height` leaves the bar exactly `--h-bar` tall wherever it fits.
+
+   THE RUO MARK KEEPS ITS CORNER. It wraps onto the second line WITH the gear, still last
+   in the row and still the thing the eye reaches first on the right -- which is the whole
+   argument in `index.html` for putting it there. */
+@media (max-width: 420px) {
+  .bar {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--h-bar);
+    padding: 4px 12px;
+    row-gap: 4px;
+  }
+  .bar-right { margin-left: auto; }
+}
+
+/* A NOTE IS PROSE, NOT A FIGURE. The `.num` cell is right-aligned tabular monospace
+   that never wraps, which is correct for a measurement and wrong for a sentence: a
+   reader-typed note rendered there reads as a value in a column of values. */
+.meas .note-text {
+  font: italic 400 11px/1.5 var(--sans);
+  color: var(--ink-2);
+  text-align: left;
+  white-space: normal;
+  /* A NOTE BREAKS MID-WORD WHEN IT HAS NO WORDS.
+     `white-space: normal` only breaks BETWEEN words, so a note typed without spaces is
+     one unbreakable word to the browser: it overflowed its cell, pushed the value column
+     and the controls out of the row, and there was nothing to wrap at. `anywhere` also
+     lets the cell shrink below that string's width, which `break-word` alone does not --
+     without it the table still sizes the column to the longest note. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  /* NOT TRUNCATED. A note is prose the reader wrote; an ellipsis would hide clinical text
+     they put there on purpose. A long note makes a tall row, which is honest. The full
+     text is in `title` as well, for a note long enough that the row is awkward. */
+  min-width: 0;
+}
+
+/* Hidden from the image, still in the list and still in the export. Dimmed rather than
+   removed, because a row that vanished when hidden would be indistinguishable from one
+   that was deleted. */
+/* DIM THE READING, NEVER THE CONTROL THAT UNDOES IT.
+   Dimming the whole row faded the eye that restores visibility along with it: the more
+   thoroughly a measurement was hidden, the harder its own un-hide control was to find.
+   And the value fell below readable contrast at .45. Opacity on a parent cannot be undone
+   by a child, so the control cell is excluded rather than re-brightened. */
+.meas tr.dimmed td { opacity: 1; }
+.meas tr.dimmed td:first-child,
+.meas tr.dimmed td.num,
+.meas tr.dimmed td.note-text { opacity: .6; }
+.meas tr:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+
+/* The box a note is typed into, positioned over the image where the marker is. */
+.note-input {
+  position: absolute;
+  z-index: 6;
+  min-width: 120px;
+  height: 22px;
+  padding: 0 5px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  color: var(--ink);
+  font: 400 12px/1 var(--sans);
+}
+
+/* The inline name box. Sized to the cell it replaces, so the row does not jump. */
+.meas-label {
+  width: 100%;
+  box-sizing: border-box;
+  height: 20px;
+  padding: 0 4px;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  color: var(--ink);
+  font: 400 11px/1 var(--sans);
+}
+
+
+/* A LAYER THAT IS NOT LISTENING. While a tool is armed every press belongs to it, so the
+   shapes give up their hit area entirely rather than compete for it. */
+.annot-inert .annot-shape,
+.annot-inert .annot-handle { pointer-events: none; }
+
+/* =====================================================================================
+   THE MODALS: About and Preferences.
+
+   A dialog over the page, not a route. The reader opening Preferences has not stopped
+   reading -- the study, the layout and this session's measurements are all still there
+   behind it, and none of them survive a navigation.
+   ===================================================================================== */
+#dialogs[hidden] { display: none; }
+/* THE SCRIM STOPS AT THE FOOTER'S TOP EDGE.
+   `inset: 0` covered the footer too, and `.foot` is unpositioned, so it painted under the
+   z-index 40 wash: the MOS-SAFE-001 statement fell from 5.06:1 to 1.79:1 -- a grey smear
+   rather than a sentence -- for as long as any dialog was open. MOS-UI-008 binds that
+   statement to a PERSISTENTLY reachable footer, and a modal is not an exception to it.
+   `--h-foot` is the footer's own height and `.foot` is border-box, so the edges align. */
+.dlg-back {
+  position: fixed; inset: 0 0 var(--h-foot) 0;
+  background: rgba(0, 0, 0, 0.55); z-index: 40;
+}
+.dlg {
+  position: fixed; z-index: 41;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(78vh, 720px); overflow: auto;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.dlg-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--panel-2);
+}
+.dlg-head h2 { margin: 0; font: 600 13px/1.3 var(--sans); color: var(--ink); }
+/* 26x26, not 22x22. WCAG 2.2 SC 2.5.8 asks 24x24 and this file cites that criterion by
+   name elsewhere -- and this is the only pointer affordance for closing the dialog. */
+.dlg-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; padding: 0;
+  border: 0; background: none; color: var(--ink-2); cursor: pointer;
+  font-size: 18px; line-height: 1; border-radius: 3px;
+}
+/* --panel is one step below the dialog's own --panel-2 ground, so the hover reads without
+   borrowing --accent-fill, which this product reserves for a CHOSEN value. */
+.dlg-x:hover { color: var(--ink); background: var(--panel); }
+.dlg-body { padding: 14px; font: 400 12px/1.6 var(--sans); color: var(--ink); }
+.dlg-lede { margin: 0 0 10px; color: var(--ink-2); }
+
+/* The standing safety mark inside About, in the same words the footer uses.
+   ON THE THREE WARN TOKENS the palette defines for exactly this -- a marked block in the
+   warning register. The first version used `var(--warn, #b8860b)` with dead fallbacks and
+   no background, so the mark had no block to sit in and two colours sat outside the
+   palette's reach. --warn-ink on --warn-fill measures 7.79:1. */
+.dlg-ruo {
+  margin: 0 0 12px; padding: 8px 10px;
+  background: var(--warn-fill);
+  border: 1px solid var(--warn-line); border-radius: 4px;
+  color: var(--warn-ink); font-weight: 600; font-size: 11px;
+}
+
+.ab { margin: 0 0 14px; }
+.ab-row { display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.ab-row dt { flex: 0 0 150px; color: var(--ink-2); }
+.ab-row dd { margin: 0; font-family: var(--mono); font-size: 11px; word-break: break-all; }
+.ab-g { margin: 0 0 10px; padding-left: 18px; }
+.ab-g li { margin: 3px 0; }
+.dlg-body h3 {
+  margin: 14px 0 6px; font: 600 11px/1.3 var(--sans);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-2);
+}
+.pf { margin-bottom: 4px; }
+.pf select {
+  width: 100%; box-sizing: border-box; height: 28px; padding: 0 7px;
+  background: var(--bg); border: 1px solid var(--line-ctl); border-radius: 3px;
+  color: var(--ink); font: 400 12px/1 var(--sans);
+}
+.pf select:focus { border-color: var(--accent); }
+.pf-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+
+/* The chrome buttons that open them, beside the RUO mark and never before it. */
+.chrome-btn {
+  border: 1px solid var(--line-ctl); background: none; color: var(--ink-2);
+  font: 400 11px/1 var(--sans); padding: 4px 8px; margin-left: 6px;
+  border-radius: 3px; cursor: pointer;
+}
+.chrome-btn:hover { color: var(--ink); border-color: var(--ink-2); }
+.chrome-btn:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* A panel the shell built rather than the markup. Same shape as a hand-written one. */
+.panel-host { padding: 0 10px 8px; }
+.sp { margin: 0; font-size: 11px; }
+.sp-row { display: flex; gap: 8px; padding: 2px 0; }
+.sp-row dt { flex: 0 0 88px; color: var(--ink-2); }
+.sp-row dd { margin: 0; color: var(--ink); word-break: break-word; }
+
+/* THE FIRST ATTEMPT AT THE DATE PICKER LIVED HERE, AND IT DID NOT WORK.
+   It styled `::-webkit-calendar-picker-indicator` with `filter: invert(1)` to make the
+   native glyph visible on this theme. Measured afterwards, that `filter` computes to
+   `none`: page CSS does not reach that pseudo-element here. The rules were kept anyway
+   and were dead the moment the real fix landed below -- the indicator is now
+   `display: none` and the field carries a button from the viewer's own icon set. Removed
+   rather than left as a rule whose comment describes a fix that never applied.
+   `color-scheme` moved to the root, where it covers every native control rather than
+   just this one. */
+
+/* =====================================================================================
+   A TECHNICAL VALUE DOES NOT REFLOW IN A RIGHT-TO-LEFT LAYOUT.
+
+   An accession, a UID, a modality code and a date are left-to-right sequences whatever
+   the interface language is. Left to the bidi algorithm inside an `rtl` document,
+   `01-Jan-2020 12:00` renders as `Jan-2020 12:00-01` -- a date that is not the date, on
+   screen, in a clinical worklist. `unicode-bidi: isolate` keeps each of these cells in
+   its own run so the surrounding direction cannot reorder it.
+   ===================================================================================== */
+/* THE HUD AND THE FOOTER TOO -- the first version of this rule fixed the worklist and
+   stopped, and the readouts on the IMAGE are where the numbers actually are. Reproduced
+   under dir="rtl": the cursor readout `-42 HU  (256, 301)` rendered as
+   `HU  (256, 301) 42-`, the minus detached from its digits and the unit pushed away from
+   the value it belongs to; and the MOS-SAFE-001 statement's full stop moved to the front
+   of the sentence. Everything in `.hud` came off the image, so the whole container is
+   isolated; an Arabic patient name inside it still renders right-to-left in its own run. */
+.hud, .foot-tech, .foot-statement, .foot-ruo,
+.tech, .num, .tags, .ab-row dd, .wl-series .num, .wl-series .tags {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+/* The number column stays flush against its own edge in both directions. */
+/* `.wl th.num` is (0,2,1) and beat the plain `[dir="rtl"] .num` at (0,2,0), so in RTL
+   the body cells flipped and the HEADER did not -- a column heading sitting over the
+   wrong end of its own figures. */
+[dir="rtl"] .num,
+[dir="rtl"] .wl .num,
+[dir="rtl"] .wl th.num { text-align: left; }
+
+/* =====================================================================================
+   THE DATE FIELD'S OWN CALENDAR BUTTON.
+
+   The native one is drawn inside the input's shadow DOM by
+   `::-webkit-calendar-picker-indicator`, and on this theme it is a dark glyph on a dark
+   field. Styling it from the page does not take -- `filter` computes to `none` -- so the
+   control existed and could not be found. This is a real button in the viewer's own icon
+   set, calling `showPicker()`. Typing a date still works exactly as it did.
+   ===================================================================================== */
+/* TWO FIELDS AND TWO BUTTONS IN ONE CELL, and they have to fit in it.
+   Laid out with `nowrap` and fixed widths, the second button sat 17px past the cell's
+   right edge and was clipped -- present in the DOM, reachable by keyboard, and invisible
+   to the reader it was added for. A flex row lets the inputs give up width instead. */
+.wl-dates {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  /* THE FILTER MUST NOT SIZE THE DATA COLUMN. Two date inputs plus two calendar buttons
+     give this cell a ~290px max-content, and auto table layout hands the WHOLE Study date
+     column that width -- measured 254px for a value needing 125px. Those are the pixels
+     that pushed Images past the right edge. The inputs already carry `flex: 1 1 0;
+     min-width: 0`, so they take the cap without clipping. */
+  max-width: 196px;
+}
+.wl-dates input[type="date"] {
+  flex: 1 1 0;
+  min-width: 0;          /* a flex item will not shrink below its content without this */
+}
+.wl-dates .date-pick { flex: 0 0 auto; }
+/* The native indicator is hidden because we replaced it; two calendar buttons on one
+   field is worse than none, because the reader cannot tell what the second one does. */
+.wl-dates input[type="date"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+.date-pick {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; margin: 0 1px;
+  border: 1px solid var(--line-ctl); border-radius: 3px;
+  background: none; color: var(--ink-2); cursor: pointer; vertical-align: middle;
+}
+.date-pick:hover { color: var(--ink); border-color: var(--ink-2); background: var(--panel-2); }
+.date-pick:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+.date-pick svg { width: 14px; height: 14px; }
+
+/* =====================================================================================
+   THE GEAR, AND SECTIONS THAT FOLD.
+
+   Preferences and About were two buttons crowding the RUO mark out of the corner a
+   reader's eye rests in. One gear holds them, and holds whatever comes next without
+   taking more of that corner each time.
+   ===================================================================================== */
+.chrome-gear {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 24px; padding: 0;
+}
+.chrome-gear svg { width: 15px; height: 15px; }
+/* `.bar-right` is the positioning context; without it this lands relative to
+   the page and drifts as the header's contents change width. */
+.bar-right { position: relative; }
+.chrome-menu {
+  position: absolute; top: 34px; right: 8px; z-index: 30;
+  min-width: 172px; padding: 4px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.chrome-menu[hidden] { display: none; }
+.chrome-menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: 6px 10px; border: 0; border-radius: 3px;
+  background: none; color: var(--ink); font: 400 12px/1.3 var(--sans); cursor: pointer;
+}
+.chrome-menu-item:hover { background: var(--accent-fill); }
+.chrome-menu-item:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+[dir="rtl"] .chrome-menu { right: auto; left: 8px; }
+[dir="rtl"] .chrome-menu-item { text-align: right; }
+
+/* THE OVERFLOW MENU HANGS FROM ITS OWN BUTTON, and this rule sits AFTER `.chrome-menu` on
+   purpose: the two selectors have equal specificity, so the later one decides, and a menu
+   that lands where the gear's menu lands only because of file order is a menu that moves
+   the next time somebody reorders this file. */
+.bar-more-menu { top: 32px; right: auto; left: 0; min-width: 196px; }
+[dir="rtl"] .bar-more-menu { left: auto; right: 0; }
+
+/* A HEADING THAT FOLDS WHAT IS UNDER IT. The whole heading is the target, not a 16px
+   chevron beside it -- a reader aims at the word, so the word is the button. */
+.rail-section h3 { margin: 0; }
+/* THE BAND IS THE BUTTON. `.side h3`/`.aside h3` already carry `height: 28px` and
+   `padding: 0 10px`, so a button with its own 6px/10px padding floated INSIDE the band
+   rather than being it -- the comment promised the whole heading as the target and the
+   geometry delivered a rectangle inset from it. Scoped to headings that actually got a
+   button, so one without keeps its own padding. */
+.rail-section h3[data-foldable="1"] { padding: 0; }
+.rail-section h3 .fold {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; height: 100%; padding: 0 10px;
+  border: 0; background: none; cursor: pointer;
+  font: inherit; color: inherit; text-align: inherit;
+}
+/* THE SET'S OWN CHEVRON, NOT A ROTATED BORDER. This was a 5x5 box with a right and a
+   bottom border turned 45 degrees: at one device pixel per CSS pixel the rotation
+   antialiases a 1px border into a soft mark that reads as neither a chevron nor anything
+   else in `icons.js`. The icon set has had a chevron since it was written; the glyph is
+   now that one, at the stroke width every other glyph on this surface uses. */
+.rail-section h3 .fold .fold-mark {
+  flex: 0 0 auto; display: inline-flex; align-items: center;
+  transition: transform 120ms ease;
+}
+.rail-section h3 .fold .fold-mark svg { width: 12px; height: 12px; }
+/* `nowrap` IS WHAT MAKES THE ELLIPSIS REAL: `text-overflow` only acts on a line that
+   does not wrap, and this heading sits in a 28px band -- without it a long word in
+   another language wraps and is cut by the band's height instead, with no mark saying so. */
+.rail-section h3 .fold .fold-label {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* THE RAIL'S OWN CONTROL AND THE FIRST SECTION'S CHEVRON WERE IN ONE PLACE.
+   `.rail-collapse` is absolutely positioned at the rail's INNER edge -- the edge its arrow
+   points at, because that is where the space goes. On the right rail that edge is the left
+   one, which is exactly where a heading starts: measured at 1280, the button's box was
+   [1036, 49, 18, 18] and the first fold chevron [1041, 53, 12, 12], the chevron entirely
+   inside it. Two arrows, one spot, and a reader photographed it.
+
+   THE HEADING YIELDS, NOT THE BUTTON. The button belongs to the rail and is what a reader
+   aims at in that corner; the chevron belongs to a section and has a whole bar to sit in.
+   18px of control plus its 5px margins on each side is 28. Only the FIRST section is
+   indented, because it is the only one the button can reach -- and the reservation is made
+   on each rail's own side, so a long heading in another language cannot run under the
+   control on the left rail either.
+
+   LOGICAL, LIKE THE CONTROL IT MAKES ROOM FOR. Both were physical, and they agreed only
+   because a control offset from its own rail's edge and a padding on that same edge happen
+   to move together. Said in one vocabulary, the agreement is visible rather than lucky.
+
+   THIS RESERVATION EXISTED ALREADY, WITH THE SIDES SWAPPED -- `padding-right` on the right
+   rail and `padding-left` on the left, which is each rail's button-free side. See the note
+   where it used to be, further down beside `.rail-restore`. A rule that reads as the fix
+   and protects the wrong edge is worse than no rule: it is why this went unlooked-at. */
+.aside > .rail-section:first-of-type h3 .fold { padding-inline-start: 28px; }
+.side > .rail-section:first-of-type h3 .fold { padding-inline-end: 28px; }
+
+/* A QUARTER TURN, NOT HALF OF ONE: the chevron points down when the section is open and
+   at the heading's own text when it is closed, which is the direction the body went. */
+.rail-section h3 .fold[aria-expanded="false"] .fold-mark { transform: rotate(-90deg); }
+[dir="rtl"] .rail-section h3 .fold[aria-expanded="false"] .fold-mark { transform: rotate(90deg); }
+.rail-section h3 .fold:hover { background: var(--panel-2); }
+.rail-section h3 .fold:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+/* FOLDED HIDES THE BODY, NOT THE SECTION. The heading stays, or the reader has no way
+   back and no way to know the panel is still there. */
+.rail-section.folded > *:not(h3) { display: none; }
+
+/* =====================================================================================
+   MEASUREMENTS, GROUPED.
+
+   Twenty rows in one flat table is a list you scan. The same twenty under `length (8)`,
+   `region (7)`, `note (2)` is a list you read -- and the reader's question is almost
+   never "what is the ninth row", it is "where are my regions".
+   ===================================================================================== */
+.meas-group {
+  margin-left: auto; padding: 1px 4px;
+  background: var(--bg); color: var(--ink-2);
+  /* `--line-ctl`, NOT `--line`: this is the boundary that says "you can operate this", and
+     the palette keeps a token for that at 3:1 or better. Measured before: 1.38:1 opaque,
+     1.30:1 under the heading's inherited opacity. */
+  border: 1px solid var(--line-ctl); border-radius: 3px;
+  font: 400 10px/1.4 var(--sans);
+}
+.meas-group-head {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  padding: 4px 10px; margin-top: 2px;
+  border: 0; border-top: 1px solid var(--line);
+  background: none; color: var(--muted-2); cursor: pointer;
+  font: 600 10px/1.4 var(--sans); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.meas-group-head::before {
+  content: ''; flex: 0 0 auto;
+  width: 0; height: 0;
+}
+/* THE SAME CHEVRON AGAIN, in place of the 4x4 rotated border this heading used. */
+.mg-mark {
+  flex: 0 0 auto; display: inline-flex; align-items: center;
+  transition: transform 120ms ease;
+}
+.mg-mark svg { width: 11px; height: 11px; }
+.meas-group-head[aria-expanded="false"] .mg-mark { transform: rotate(-90deg); }
+[dir="rtl"] .meas-group-head[aria-expanded="false"] .mg-mark { transform: rotate(90deg); }
+.meas-group-head:hover { color: var(--ink); background: var(--panel-2); }
+.meas-group-head:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+/* THE COUNT STAYS VISIBLE WHEN THE GROUP IS FOLDED. A fold that hides both the rows and
+   the fact that there are rows is a way to lose a measurement without deleting it. */
+.mg-count {
+  margin-left: auto; padding: 0 5px;
+  background: var(--panel-2); border-radius: 8px;
+  font-variant-numeric: tabular-nums; font-weight: 400;
+}
+[dir="rtl"] .mg-count, [dir="rtl"] .meas-group { margin-left: 0; margin-right: auto; }
+
+/* =====================================================================================
+   TABULAR FIGURES, RESTORED AFTER THE SHORTHANDS THAT SILENTLY DROP THEM.
+
+   Per CSS Fonts 4 §5.1 the `font:` shorthand resets every `font-variant-*` longhand to its
+   initial value. `body` declares `font-variant-numeric: tabular-nums` precisely so a slice
+   counter ticking past 99 does not make the HUD jump -- and roughly forty `font:` shorthands
+   in this file undo it for the elements that actually carry numbers.
+
+   Measured on the --sans stack at 12px: "111 / 111" is 38.53px and "888 / 888" is 50.06px.
+   That is 11.53px of horizontal drift in a three-digit field as the digits change, on a
+   readout the reader scrolls through a hundred slices at a time.
+
+   Declared once, at the end, rather than patched into each rule the next time somebody
+   notices a column twitching.
+   ===================================================================================== */
+.hud, .hud-tl, .hud-tr, .hud-bl, .hud-br, .scale-mm,
+.wl tbody td, .wl-series td, .wl-count, .wl-page,
+.meas td, .meas .num, .meas .unit, .mg-count,
+.sp-row dd, .ab-row dd, .tech, .num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* THE ROW'S CONTROLS RECEDE; ONLY THE DESTRUCTIVE ONE WARNS.
+   `icon()` emits an <svg> with a viewBox and no width/height, so it is sized entirely by
+   CSS -- and unlike `.itool svg` (19px), `.date-pick svg` (14px) and `.chrome-gear svg`
+   (15px), nothing sized this one. The eye filled its 24x24 button edge to edge, making it
+   the loudest object in a row whose subject is a measured value. The 24x24 HIT TARGET is
+   deliberate and stays (WCAG 2.2 SC 2.5.8); only the glyph shrinks. */
+.meas .linkish svg { width: 14px; height: 14px; display: block; }
+.meas .linkish:hover { background: var(--panel-2); color: var(--ink-2); }
+.meas .linkish[data-drop]:hover { background: var(--warn-fill); color: var(--warn); }
+
+
+/* The first section of a rail has nothing above it to be separated from. */
+/* `:first-of-type`, NOT `:first-child`: `rails.js` prepends the collapse button to each
+   rail, so the first CHILD is a button and this rule never matched. Verified on the live
+   tree -- `firstSection.matches(':first-child')` is false in both rails -- and the effect
+   was a section divider drawn across the top of each rail, separating the first heading
+   from the toolbar band above it, which is not a section. */
+.side > .rail-section:first-of-type h3,
+.aside > .rail-section:first-of-type h3 { border-top: 0; }
+
+/* =====================================================================================
+   СВЕРНУТЬ РЕЙЛ — И ВЕРНУТЬ ЕГО.
+
+   Сворачивание жило только на клавишах `[` и `]`, которых нет и в списке горячих клавиш.
+   Читатель мог закрыть рейл и остаться без единого способа его открыть. Кнопка закрытия
+   сидит в самом рейле, а на его месте остаётся полоса 18px — достаточно, чтобы держать
+   цель, достаточно узко, чтобы освобождение места оставалось смыслом операции.
+   ===================================================================================== */
+.rail-collapse {
+  position: absolute;
+  top: 5px;
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; border-radius: 3px;
+  background: none; color: var(--muted-2);
+  cursor: pointer; z-index: 3;
+}
+/* 18x18 PAINTED, 24x24 TO THE POINTER (WCAG 2.2 SC 2.5.8).
+   THE OVERHANG GROWS TOWARD THE RAIL'S EDGE AND NOT INTO ITS HEADING. Symmetric was the
+   first attempt and it covered 3px of the fold button beside it -- measured, not
+   supposed. Each variant now reaches out to the 5px margin it already sits in, where
+   there is nothing to cover, and only 1px toward its neighbour. 18 + 5 + 1 = 24. */
+.rail-collapse::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+}
+/* LOGICAL, BECAUSE THE RAILS THEMSELVES MOVE. These were `right: 5px` and `left: 5px`,
+   and `dir="rtl"` swaps which side of the window each rail is on while a physical offset
+   stays put: measured in Arabic at 1024, the study rail sat at x=838..1024 with its
+   control at x=1000 -- the WINDOW's edge -- and the measurements rail at 0..250 with its
+   control at x=6, likewise. In English both sit at the rail's INNER edge, beside the
+   picture, which is where the arrow points and where the reader is looking.
+
+   `-right` and `-left` now name which end of their own rail the control takes: the study
+   rail's control takes the inline END, the measurements rail's the inline START, and both
+   follow the reading direction to the inner edge. */
+.rail-collapse-right::before { inset-inline-end: -5px; inset-inline-start: -1px; }
+.rail-collapse-left::before  { inset-inline-start: -5px; inset-inline-end: -1px; }
+.rail-collapse-right { inset-inline-end: 5px; }
+.rail-collapse-left { inset-inline-start: 5px; }
+.rail-collapse:hover { color: var(--ink); background: var(--panel-2); }
+.rail-collapse:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+/* Стрелка рисуется, а не набирается: глиф зависел бы от шрифта, которого в поставке
+   может не быть. ТЕПЕРЬ ЭТО ШЕВРОН ИЗ НАБОРА, а не повёрнутый квадрат: он стоит в 12px от
+   шеврона первой секции, и две метки разного веса рядом читались как разные знаки. */
+.rail-collapse span {
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.rail-collapse span svg { width: 12px; height: 12px; }
+/* THE ARROW POINTS AT THE PICTURE, which is on the other side in Arabic. A quarter
+   turn, because the set draws the chevron pointing down. */
+.rail-collapse-right span { transform: rotate(-90deg); }
+.rail-collapse-left span { transform: rotate(90deg); }
+[dir="rtl"] .rail-collapse-right span { transform: rotate(90deg); }
+[dir="rtl"] .rail-collapse-left span { transform: rotate(-90deg); }
+
+.rail-restore {
+  flex: 0 0 18px;
+  align-self: stretch;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0;
+  border-left: 1px solid var(--line-2); border-right: 1px solid var(--line-2);
+  background: var(--panel); color: var(--muted-2);
+  cursor: pointer;
+}
+.rail-restore[hidden] { display: none; }
+.rail-restore:hover { color: var(--ink); background: var(--panel-2); }
+.rail-restore:focus-visible { outline: 1px solid var(--accent); outline-offset: -2px; }
+.rail-restore span {
+  display: inline-flex; align-items: center; justify-content: center;
+  transform: rotate(90deg);
+}
+.rail-restore span svg { width: 12px; height: 12px; }
+[data-restores="right"] span { transform: rotate(-90deg); }
+/* AND THE STRIP THAT STANDS WHERE A HIDDEN RAIL WAS points back at where it will come
+   from, which also swaps. */
+[dir="rtl"] .rail-restore span { transform: rotate(-45deg); }
+[dir="rtl"] [data-restores="right"] span { transform: rotate(135deg); }
+
+/* Рейл — контекст позиционирования для своей кнопки закрытия. */
+.side, .aside { position: relative; }
+/* Заголовок первой секции уступает место кнопке -- правила выше, у `.fold-mark`.
+   ЗДЕСЬ ОНИ БЫЛИ, И СТОРОНЫ В НИХ БЫЛИ ЗЕРКАЛЬНЫЕ: `padding-right` на правом рельсе и
+   `padding-left` на левом, при том что кнопка правого рельса -- `rail-collapse-left`
+   (`left: 5px`), а кнопка левого -- `rail-collapse-right` (`right: 5px`). Место
+   резервировалось на той стороне, где кнопки нет. На левом рельсе это ничего не ломало --
+   отступ ушёл в пустоту, а короткому заголовку и так хватало; на правом кнопка легла
+   точно на шеврон первой секции. */
+
+/* THE PRIOR LIST: one patient's other studies, beside the series of the one being read.
+   It borrows `.series-item` wholesale -- same target size, same focus ring, same hover --
+   because it is the same gesture in the same rail, and a second row style would say the
+   two lists behave differently when they do not. What it adds is a leading date, since a
+   study is told from its follow-up by WHEN and almost never by its description. */
+.prior-when {
+  display: block;
+  font: 500 11px/1.3 var(--sans);
+  color: var(--ink);
+  /* The date is a technical value in a list a right-to-left locale mirrors. Without this,
+     `02-Jun-2016 16:19` renders as `Jun-2016 16:19-02` in Arabic -- a date that is not the
+     date, in the one field this list is read by. ONE DECLARATION: the first draft of this
+     rule was two, twelve lines apart, which is the defect `.meas-head` had three times
+     over and which the reset nobody noticed cost 1.30:1 contrast on a control. */
+  unicode-bidi: isolate;
+}
+
+/* WHICH STUDY A PANEL IS SHOWING, drawn only when the screen holds more than one --
+   `studyMark` in app.js decides, and the argument for the condition is written there.
+
+   IT IS DELIBERATELY NOT QUIET. A date that is easy to overlook is worse here than no
+   date at all: a reader comparing a lesion across two studies who has stopped noticing
+   the mark is reading two pictures they believe are one study, which is the whole failure
+   this feature could produce. Same weight as the series name above it, one step down in
+   colour, and isolated from the surrounding text direction because it is a technical
+   value in a box that mirrors under a right-to-left locale. */
+.hud-study {
+  display: block;
+  margin-top: 1px;
+  color: var(--accent);
+  unicode-bidi: isolate;
+}
+
+/* A MEASUREMENT TAKEN ON ANOTHER STUDY, in a table that now legitimately holds two.
+   Not `.muted`: that is the colour of "· another series", which describes a safe
+   within-study situation the reader has been trained to skip past. The two markings must
+   not look alike, because the whole reason this one exists is that the familiar one was
+   about to start appearing on rows measured on a different day. */
+.meas-other-study {
+  margin-inline-start: 4px;
+  font: 500 10px/1.3 var(--sans);
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+/* THE LAYOUT PICKER: a 4x4 grid behind one control, rather than thirteen more buttons on
+   the one row of this surface that is `overflow: hidden` and does not wrap. */
+.layout-pick-wrap { position: relative; display: inline-flex; }
+.layout-grid {
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline-start: 0;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(4, 18px);
+  gap: 3px;
+  padding: 7px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-ctl);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .45);
+}
+.layout-cell {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: var(--panel);
+  /* 3:1 AGAINST ITS SURROUND, which WCAG 1.4.11 asks of a control's boundary. An unlit
+     cell is still a control a reader has to find. */
+  border: 1px solid var(--line-ctl);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.layout-cell.in {
+  background: var(--accent-fill);
+  border-color: var(--accent);
+}
+.layout-cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+/* The shape in words, under the grid: a reader hovering 3x2 should not have to count. */
+.layout-readout {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  text-align: center;
+  font: 400 10px/1.3 var(--mono);
+  color: var(--muted);
+  unicode-bidi: isolate;
+}
+
+/* THE PROTOCOL THAT ARRANGED THE SCREEN, named in the rail. Quiet, because it answers a
+   question the reader asks once per case -- but not `--muted`, because when it says
+   "overridden" it is reporting that the name no longer describes what they see. */
+.protocol {
+  margin: 0;
+  padding: 7px 10px 8px;
+  font: 400 11px/1.35 var(--sans);
+  color: var(--ink-2);
+}
+.protocol-name.was { text-decoration: line-through; opacity: .7; }
+.protocol-over {
+  display: block;
+  margin-top: 2px;
+  font: 500 10px/1.3 var(--sans);
+  color: var(--accent);
+}
+
+/* WHAT IS DRAWN THROUGH THIS PANEL THAT WAS NOT ACQUIRED ON IT. Two lines under the
+   series name: which series, and that its values are resampled and not measurable. The
+   colour is the hot-metal ramp's own mid-tone, so the caption and the pixels it describes
+   are visibly the same thing. */
+.hud-fusion {
+  display: block;
+  margin-top: 1px;
+  color: #f0a21e;
+  unicode-bidi: plaintext;
+}
+.hud-fusion.err { color: var(--bad, #e06666); }

@@ -1,0 +1,13 @@
+{
+  "_comment": [
+    "What this build IS, beside the source of each value. Read by the About dialog.",
+    "NOT WRITTEN INTO A SOURCE FILE: register entry 82 records what that costs -- a",
+    "version in code is correct until the next build and silently false afterwards.",
+    "git_commit is stamped by the release step; the value here is the tree this file",
+    "was last written from, and 'unstamped' is an honest answer when nothing stamped it."
+  ],
+  "viewer_version": "0.4.0",
+  "platform_version": "0.4.0.dev0",
+  "git_commit": "e1ab0c39140a0e11ea3cf4081d552447c5de4a4c",
+  "transfer_syntax": "1.2.840.10008.1.2.1"
+}

@@ -1,0 +1,80 @@
+{
+  "_comment": [
+    "MOS-UI-208: the window/level preset table. A NAMED CONFIGURATION FILE, versioned with",
+    "the deployment, not hard-coded. Each entry carries a name, width and centre in HU, a key",
+    "binding, and THE SOURCE OF THE VALUES.",
+    "",
+    "MOS-REL-077 forbids inventing a value that has no source in the specification or a",
+    "registry, and MOS-UI-208 says so of window presets specifically: 'the correct source is",
+    "the department's incumbent viewer configuration or the reading convention the physician",
+    "already uses, captured once and recorded, not a number chosen here.'",
+    "",
+    "THAT CAPTURE HAS NOT HAPPENED. Every row below is marked source: 'convention_unverified'",
+    "and is a widely published convention, NOT this department's configuration. They are here",
+    "so the surface is usable, and they are marked so that nobody mistakes them for the",
+    "captured set. Replacing them is a five-minute conversation with the physician who asked",
+    "for RadiAnt ergonomics, and until it happens MOS-UI-208 is UNMET, not satisfied.",
+    "",
+    "MOS-UI-214 requires that status to be recorded in the MOS-UI-202 register row with its",
+    "date before a campaign opens.",
+    "UNITS ARE NOW DATA. Every entry with a centre carries \"unit\": \"HU\", because that is what these conventions are defined in, and the surface refuses to apply one to a series whose values are not in that unit -- measured: the Brain window (W 80 L 40) applied to brain MR, whose values are arbitrary signal intensity, whites the panel out entirely. The \"Default\" entry carries no unit: it is the acquisition's own (0028,1050/1051) and is valid on any modality."
+  ],
+  "version": "0.1.0-unverified",
+  "captured_from": null,
+  "captured_on": null,
+  "presets": [
+    {
+      "name": "Default",
+      "key": "1",
+      "center": null,
+      "width": null,
+      "source": "acquisition",
+      "note": "(0028,1050) WindowCenter and (0028,1051) WindowWidth from the series header. The only entry here with an authoritative source: it is what the acquisition itself declared."
+    },
+    {
+      "name": "Lung",
+      "key": "2",
+      "center": -600,
+      "width": 1500,
+      "source": "convention_unverified",
+      "note": "Published thoracic convention. MOS-UI-208 names lung as a minimum for a thoracic campaign. Not captured from the department.",
+      "unit": "HU"
+    },
+    {
+      "name": "Soft tissue",
+      "key": "3",
+      "center": 40,
+      "width": 400,
+      "source": "convention_unverified",
+      "note": "Published convention. Not captured from the department.",
+      "unit": "HU"
+    },
+    {
+      "name": "Bone",
+      "key": "4",
+      "center": 400,
+      "width": 2000,
+      "source": "convention_unverified",
+      "note": "Published convention. Not captured from the department.",
+      "unit": "HU"
+    },
+    {
+      "name": "Brain",
+      "key": "5",
+      "center": 40,
+      "width": 80,
+      "source": "convention_unverified",
+      "note": "Published convention. Out of scope for a thoracic campaign; present because the archive is not restricted to thorax.",
+      "unit": "HU"
+    },
+    {
+      "name": "Mediastinum",
+      "key": "6",
+      "center": 50,
+      "width": 350,
+      "source": "convention_unverified",
+      "note": "Published convention. MOS-UI-208 names mediastinum as a minimum for a thoracic campaign alongside lung. Not captured from the department.",
+      "unit": "HU"
+    }
+  ]
+}

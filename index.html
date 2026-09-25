@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A HOST'S NAME, NOT THIS VIEWER'S. `viewer-config.js` sets `productName` and the
+     shell writes it into the title and the heading on boot; what ships here is what
+     this software is when nobody has named it. The tab shows it for one frame before
+     the module runs, which is the right trade for a name -- unlike the footer
+     statement, which is a safety marking and is put into the bytes by the origin. -->
+<title>DICOM Viewer</title>
+<!--
+  =====================================================================================
+  The MedicalOS first-party clinician surface.
+
+  This page exists because release 0.4.0 reverses MOS-CORE-038 ("The platform MUST NOT
+  build its own DICOM viewer") on the terms MOS-CORE-036 sets for reversing a non-goal.
+  The engineering half of that decision is the Viewer row of docs/adr/BUILD_VS_ADOPT.md,
+  which names the disqualifying property -- the delivered OHIF surface could not be
+  bounded to this requirement without a fork, and MOS-UI-009 forbids the fork -- and
+  records the counter-argument, which is that the rendering-correctness evidence burden
+  transfers here and must be discharged before this ships.
+
+  NO BUILD STEP, NO FRAMEWORK, NO DEPENDENCY. Native ES modules, served read-only from
+  the same nginx that serves the archive proxy and /api/v1. That is not minimalism for
+  its own sake: every dependency added here is a SOUP item under IEC 62304 8.1.2, and
+  the whole argument for building was that this surface stays small enough to specify.
+
+  NO CREDENTIAL LIVES IN THIS PAGE. /dicomweb/ is proxied by nginx, which injects the
+  Gateway token server-side (MEDOS_GATEWAY_VIEWER_KEY); the browser never sees it, and
+  tests/e2e/test_demo.py greps every served file for `bearer` to keep it that way.
+  MOS-UI-002 forbids this surface to hold a PACS credential at all.
+  =====================================================================================
+-->
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<!--
+  SEVENTEEN TAB STOPS STOOD BETWEEN THE PAGE AND THE FIRST STUDY. A keyboard reader
+  arriving at the worklist walked the gear, the sort buttons and all six filter fields
+  before reaching a single result, and did it again on every visit. WCAG 2.4.1 asks for a
+  way past a block that repeats; this is that way. It is visible only while focused, which
+  is the one moment it is useful.
+-->
+<a class="skip" href="#studies" data-i18n="chrome.skip">Skip to the studies</a>
+
+<header class="bar">
+  <div class="brand">
+    <span class="mark">◈</span>
+    <div>
+      <h1 id="product-name">DICOM Viewer</h1>
+      <p class="sub" id="subtitle" data-i18n="chrome.subtitle">Clinical Viewer</p>
+    </div>
+  </div>
+
+  <button class="ghost" id="back" hidden>
+    <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor"
+         stroke-width="1.8" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg>
+    Studies
+  </button>
+
+  <!--
+    WHO IS ON SCREEN, in the chrome, always.
+
+    This surface carried no patient identity anywhere except an 11px grey second line on a
+    panel label, conditional on the series happening to state (0010,0010). A reader checking
+    they are reporting the right study had nothing to check against. The banner is the one
+    place both the design canvas and every product this replaces put it.
+
+    `hidden` until a study is open: an empty banner is worse than none, because a blank
+    where a name belongs reads as a patient with no name rather than as no study.
+  -->
+  <!--
+    THE VERBS, as glyphs, in the one row that never wraps. Built by app.js so each control
+    keeps the single definition it already had; only its presentation moved.
+  -->
+  <!--
+    THE VERB ROW. Four builders fill it and EACH OWNS A SLOT: `buildTools` clears its own
+    container, and when the other three were nested inside that one it deleted them, so
+    their buttons were appended to detached nodes and never appeared. A shared container
+    that one writer empties is a shared container with one writer.
+  -->
+  <div class="bar-tools" id="bar-tools">
+    <span class="tool-group" id="bar-verbs"></span>
+    <span class="tool-sep"></span>
+    <span class="tool-group" id="links"></span>
+    <span class="tool-sep"></span>
+    <span class="tool-group" id="orient"></span>
+    <span class="tool-sep"></span>
+    <span class="tool-group" id="bar-toggles"></span>
+  </div>
+
+  <!--
+    WHAT DOES NOT FIT, RATHER THAN WHAT WAS LOST.
+
+    The row above is `overflow: hidden` and does not wrap, for the reason written over
+    `.bar-tools` in styles.css. What that cost, measured on this build: at 1340px the CSV
+    export is gone, at 1320 the PNG capture with it, at 1280 the reset as well, at 1200 six
+    controls including the segmentation toggle -- each one clipped out of paint AND out of
+    hit-testing, with nothing on screen saying a control had been there. The first three to
+    go are the two that carry evidence out of the viewer and the one that puts the picture
+    back to a known state.
+
+    THIS BUTTON SITS OUTSIDE THE CLIPPING BOX, so the one control that says "there is more"
+    is the one control that cannot itself be clipped. It stays `hidden` while everything
+    fits: a permanently visible overflow control on a toolbar with no overflow is a lie in
+    the other direction.
+  -->
+  <div class="bar-more-wrap">
+    <button type="button" id="bar-more" class="itool bar-more" hidden
+      aria-haspopup="menu" aria-expanded="false" aria-controls="bar-more-menu"
+      title="More tools" data-i18n-title="bar.more">
+      <span class="sr-only" data-i18n="bar.more">More tools</span>
+    </button>
+    <div id="bar-more-menu" class="chrome-menu bar-more-menu" role="menu" hidden></div>
+  </div>
+
+  <div class="who-banner" id="who" hidden>
+    <span class="who-name" id="who-name"></span>
+    <span class="who-meta" id="who-meta"></span>
+  </div>
+
+  <div class="bar-right">
+    <!--
+      MOS-SAFE-001 again, and deliberately duplicated from the footer. The footer statement
+      is the one the requirement names and it stays verbatim; this is the same condition in
+      the place a reader's eye actually rests, beside the patient's name. A standing mark,
+      not a notice: it never changes and never dismisses.
+    -->
+    <span class="ruo">RUO — NOT FOR DIAGNOSIS</span>
+    <!--
+      ONE CONTROL, AFTER THE RUO MARK AND NEVER BEFORE IT.
+      Preferences and About were two buttons beside the safety mark, and every
+      settings-shaped thing added later would have been a third and a fourth -- each one
+      crowding the RUO mark further from the corner a reader's eye rests in. The standing
+      safety mark is what the eye should reach first here; a menu holds the rest without
+      taking that space.
+    -->
+    <button type="button" id="t-gear" class="chrome-btn chrome-gear"
+      title="Settings" data-i18n-title="chrome.settings"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="chrome-menu">
+      <span class="sr-only" data-i18n="chrome.settings">Settings</span>
+    </button>
+    <div id="chrome-menu" class="chrome-menu" role="menu" hidden></div>
+  </div>
+</header>
+
+<main>
+  <!-- STUDY LIST -->
+  <!--
+    THE WORKLIST. A table, because a study list IS tabular: the reader is comparing seven
+    fields down a column to find one row, and seven stacked cards do not let them. Filters
+    go to the ARCHIVE (PS3.18 6.7.1.1 match keys), not to an array already in the browser,
+    so the question can be asked of an archive with more studies than fit in memory.
+  -->
+  <section id="study-list" class="panel">
+    <div class="wl-head">
+      <h2 data-i18n="wl.studies">Studies</h2>
+      <span class="wl-count" id="wl-count" role="status"></span>
+      <button class="tool" id="wl-clear" type="button" data-i18n="wl.clearFilters">Clear filters</button>
+    </div>
+
+    <div class="wl-wrap">
+      <table class="wl">
+        <caption class="sr-only" data-i18n="wl.caption">Studies in this archive. Sortable within the page shown.</caption>
+        <thead>
+          <tr class="wl-cols">
+            <th scope="col" class="wl-x"><span class="sr-only" data-i18n="wl.expand">Expand</span></th>
+            <th scope="col"><button type="button" class="wl-sort" data-sort="name" data-i18n="wl.patient">Patient</button></th>
+            <th scope="col"><button type="button" class="wl-sort" data-sort="id" data-i18n="wl.id">ID</button></th>
+            <th scope="col"><button type="button" class="wl-sort" data-sort="date" data-i18n="wl.studyDate">Study date</button></th>
+            <th scope="col"><button type="button" class="wl-sort" data-sort="desc" data-i18n="wl.description">Description</button></th>
+            <th scope="col" data-i18n="wl.modality">Modality</th>
+            <th scope="col"><button type="button" class="wl-sort" data-sort="acc" data-i18n="wl.accession">Accession</button></th>
+            <th scope="col" class="num"><button type="button" class="wl-sort" data-sort="count" data-i18n="wl.images">Images</button></th>
+          </tr>
+          <tr class="wl-filters">
+            <td></td>
+            <td><label class="sr-only" for="f-name" data-i18n="wl.patientName">Patient name</label>
+                <input id="f-name" type="search" placeholder="name" data-i18n-placeholder="wl.phName" autocomplete="off"></td>
+            <td><label class="sr-only" for="f-id" data-i18n="wl.patientId">Patient ID</label>
+                <input id="f-id" type="search" placeholder="id" data-i18n-placeholder="wl.phId" autocomplete="off"></td>
+            <td class="wl-dates">
+                <label class="sr-only" for="f-from" data-i18n="wl.dateFrom">Study date from</label>
+                <input id="f-from" type="date">
+                <label class="sr-only" for="f-to" data-i18n="wl.dateTo">Study date to</label>
+                <input id="f-to" type="date"></td>
+            <td><label class="sr-only" for="f-desc" data-i18n="wl.studyDescription">Study description</label>
+                <input id="f-desc" type="search" placeholder="description" data-i18n-placeholder="wl.phDescription" autocomplete="off"></td>
+            <td><label class="sr-only" for="f-mod" data-i18n="wl.modality">Modality</label>
+                <select id="f-mod">
+                  <option value="" data-i18n="wl.any">any</option>
+                  <option>CT</option><option>MR</option><option>PT</option>
+                  <option>CR</option><option>DX</option><option>US</option>
+                  <option>SEG</option><option>SR</option><option>RTSTRUCT</option>
+                </select></td>
+            <td><label class="sr-only" for="f-acc" data-i18n="wl.accession">Accession</label>
+                <input id="f-acc" type="search" placeholder="accession" data-i18n-placeholder="wl.phAccession" autocomplete="off"></td>
+            <td></td>
+          </tr>
+        </thead>
+        <tbody id="studies"></tbody>
+      </table>
+    </div>
+
+    <div class="wl-foot">
+      <button class="tool" id="wl-prev" type="button" data-i18n="wl.previous">← Previous</button>
+      <span class="wl-page" id="wl-page"></span>
+      <button class="tool" id="wl-next" type="button" data-i18n="wl.next">Next →</button>
+    </div>
+  </section>
+
+  <!-- VIEWER -->
+  <section id="viewer" class="viewer" hidden>
+    <!--
+      A RAIL IS ADDRESSABLE AND ITS SECTIONS ARE UNITS. `data-rail` is what
+      `src/ui/rails.js` finds; `data-section` marks shell content that is fixed, and
+      `data-panel-id` (right rail) marks a registered panel that may be MOVED between
+      rails. The distinction is not cosmetic: a section the reader can move must be one
+      element, or moving it would leave its heading behind.
+    -->
+    <aside class="side" id="rail-left" data-rail="left"
+       aria-label="Study and series" data-i18n-aria="rail.leftLandmark">
+      <!--
+        THE STUDY SECTION STOOD HERE and printed the study's date, modality, description
+        and series count -- every one of which the `Study` panel in the right rail already
+        carries, with the patient, the id and the accession besides. Two sections with the
+        same title, one per rail, describing one study; and until this was fixed they even
+        printed the date in two different formats.
+
+        This rail is the series list. The identity is answered by the header banner, which
+        is always on screen, and by the `Study` panel, which is where the reader goes for
+        the identifiers themselves.
+      -->
+      <!--
+        WHAT ARRANGED THIS SCREEN, by name.
+
+        MOS-UI-209's substance is that a case opens laid out under a NAMED protocol. A
+        layout that appears without saying why teaches the reader it is arbitrary, and on
+        the day it puts the scout in panel one they will assume it always did.
+
+        IN THE RAIL AND NOT THE TOOLBAR, because `.bar-tools` is `overflow: hidden` and
+        does not wrap -- six controls were measured clipped out of it, out of paint and
+        out of hit-testing both. A name that can be clipped is not a name.
+
+        `protocols.json` carries the argument in full, including why 19.4.4 does not reach
+        this surface and why the substance is built regardless.
+      -->
+      <section class="rail-section" data-section="protocol" id="protocol-section" hidden>
+        <h3 data-i18n="rail.layout">Layout</h3>
+        <p id="protocol" class="protocol"></p>
+      </section>
+
+      <section class="rail-section" data-section="series">
+        <h3 data-i18n="rail.series">Series</h3>
+        <ul id="series" class="series"></ul>
+      </section>
+
+      <!--
+        THE SAME PATIENT'S OTHER STUDIES, which this surface could not show at all.
+
+        COMPARING WITH A PRIOR IS THE ROUTINE, not the exception: whether a nodule grew is
+        a question about two studies, and until now one `studyUID` variable meant the
+        surface could hold exactly one. Opening the second erased the first, along with
+        every measurement taken on it.
+
+        WHY THIS RAIL AND NOT THE TOOLBAR. It is navigation between studies, which is what
+        the rail beside it already is -- and the toolbar is the one row on this screen that
+        cannot grow, having just had six controls clipped out of it.
+
+        IT IS HIDDEN WHEN THERE IS NOTHING IN IT. A section headed "Prior studies" standing
+        empty on every solitary study teaches the reader to stop looking at it.
+      -->
+      <section class="rail-section" data-section="priors" id="priors-section" hidden>
+        <h3 data-i18n="rail.priors">Prior studies</h3>
+        <ul id="priors" class="series priors"></ul>
+      </section>
+    </aside>
+
+    <!--
+      THE SPLITTER IS A CONTROL, not a decoration: role=separator and a tabindex, so it
+      answers the keyboard as well as the pointer. A drag handle a keyboard cannot reach
+      is a control only some readers have.
+    -->
+    <div class="splitter" data-splits="left" role="separator" aria-orientation="vertical"
+         tabindex="0" aria-label="Resize the study rail" data-i18n-aria="rail.resizeLeft"></div>
+
+    <div class="stage-wrap">
+  <!-- RadiAnt-style tool strip. Presets are CT window/level pairs a radiologist expects
+       to reach without typing; the mouse model below is RadiAnt's, because it is the one
+       muscle memory already knows. MOS-UI-204: nothing here creates or edits pixels. -->
+  <div class="tools">
+    <div class="tool-group" id="layouts"></div>
+    <div class="tool-group" id="tools-group"></div>
+    <div class="tool-group" id="planes"></div>
+    <div class="tool-group" id="oblique"></div>
+    <div class="tool-group" id="slab"></div>
+    <div class="tool-group" id="zooms"></div>
+    <div class="tool-group" id="presets"></div>
+    <div class="tool-group right">
+      <span class="hint" data-i18n="tools.hint">press ? for keys · L-drag W/L · R-drag zoom · M-drag pan · wheel slice</span>
+    </div>
+  </div>
+
+    <!--
+      THE NOTICE IS A BAR, NOT AN OVERLAY, AND IT SITS ABOVE THE PICTURE RATHER THAN ON IT.
+      It used to be absolutely positioned inside `.stage`, centred over the grid. Measured
+      on a 2x2 of a real MR study it covered four HUD elements across two panels: the
+      series name, the patient's name, the window/level readout, and both `A` orientation
+      letters -- and `index.html` says elsewhere that those letters are the only thing on
+      screen distinguishing the patient's left from their right. It also ate the mouse:
+      593x54 px of the image answered `elementFromPoint` with the notice, so a window/level
+      drag begun there never reached the canvas.
+
+      In the flow it costs the grid its own height, once, and covers nothing ever.
+    -->
+    <div class="notice" id="notice" hidden></div>
+    <div class="stage">
+      <!-- Panels are built by app.js: each owns a canvas, a WebGL2 context and a Viewport.
+           Four contexts for a 2x2 is well inside every browser's limit. -->
+      <div class="grid" id="grid"></div>
+      <div class="help" id="help" hidden></div>
+    </div>
+    </div>
+
+    <!--
+      TWO RAILS, AND THE SPLIT IS NOT COSMETIC.
+
+      The left rail answers "what am I looking at" -- the study, and the series it holds.
+      The right answers "what has been found in it" -- the segmentation a model drew, the
+      measurements it recorded, and the measurements the reader took. Those are different
+      questions asked at different moments, and stacking all four sections in one 290px
+      column meant the two that change while you read sat below the two that do not, off
+      the bottom of the rail, reachable only by scrolling away from the thing you were
+      reading.
+    -->
+    <div class="splitter" data-splits="right" role="separator" aria-orientation="vertical"
+         tabindex="0" aria-label="Resize the measurements rail" data-i18n-aria="rail.resizeRight"></div>
+
+    <aside class="aside" id="findings" data-rail="right"
+       aria-label="Segmentation and measurements" data-i18n-aria="rail.rightLandmark">
+      <section class="rail-section" data-panel-id="medos.segments">
+        <h3 data-i18n="rail.segmentation">Segmentation</h3>
+        <ul id="segments" class="segments"><li class="muted">none on this panel</li></ul>
+      </section>
+
+      <section class="rail-section" data-panel-id="medos.measurements">
+        <h3 data-i18n="rail.measurements">Measurements</h3>
+        <div id="measurements" class="measurements"><p class="muted">no measurements yet</p></div>
+      </section>
+    </aside>
+  </section>
+</main>
+
+<footer class="foot">
+  <!--
+    WHAT THE PIXELS ACTUALLY ARE. Count, size, stored type, the Modality LUT and the
+    transfer syntax, in mono, at the left. A reader who wants to know whether they are
+    looking at HU or at stored values should not have to open a tag browser this surface
+    does not have.
+  -->
+  <span class="foot-tech" id="foot-tech"></span>
+  <!--
+    MOS-UI-008: both surfaces MUST carry the MOS-SAFE-001 statement verbatim in a
+    persistently reachable footer. Verbatim means verbatim; this string is covered by the
+    claims lint of MOS-SAFE-008.
+
+    AND FOR THE WHOLE OF 0.1.0-0.4.0 THIS FOOTER DID NOT CARRY IT. The comment above
+    named the requirement, said what verbatim means, and sat on top of a different
+    sentence. MOS-SAFE-001 names four places its statement must appear -- the README,
+    every release artifact, the API landing document and THE WEB UI FOOTER -- and a gate
+    checked the first and not this one. The sentence below is now taken from
+    docs/spec/09-clinical-safety.md by the gate rather than trusted to a copy, so a
+    change to the specification cannot leave this line behind.
+
+    THE RESEARCH-USE LINE STAYS. It is not the MOS-SAFE-001 statement and never was a
+    substitute for it, but it is the marking every measurement record mirrors as
+    `clinical_use: research_only`; dropping it to make room would trade one missing
+    marking for another.
+  -->
+  <!--
+    A HOST'S POSITIONING STATEMENT GOES HERE, AND IT IS NOT INJECTED BY SCRIPT.
+
+    "MedicalOS integrates, governs and evidences medical AI services..." is a claim about
+    MedicalOS. A viewer pointed at a hospital's own archive would be making it falsely, so
+    it is not this file's to carry -- and `MOS-SAFE-001` makes it a MUST for the platform
+    that does carry it, verbatim, in the web UI footer.
+
+    THOSE TWO FACTS ONLY BOTH HOLD IF THE ORIGIN PUTS IT IN THE DOCUMENT. Passing it
+    through `viewer-config.js` and writing it with JavaScript would make a REQUIRED SAFETY
+    MARKING depend on a script loading -- a strictly weaker guarantee than the one the
+    requirement asks for, dressed as a refactor. `deploy/compose/nginx.conf.template` uses
+    `sub_filter` to replace the marker below in the delivered bytes, so the statement is in
+    the HTML the browser parses whether or not anything else runs.
+
+    THE MARKER IS PAIRED WITH THAT FILTER BY A GATE, because a text substitution that
+    silently matches nothing is exactly how a footer ends up empty while every test passes.
+  -->
+  <span class="foot-statement" data-host-statement><!--HOST_STATEMENT--></span>
+  <!--
+    AND THIS ONE IS THE VIEWER'S OWN, whoever is hosting it. It is not a positioning
+    statement about a platform; it is what this software is for. A viewer that showed no
+    marking at all while its host's statement was absent would be worse than either.
+  -->
+  <span class="foot-ruo">RESEARCH USE ONLY — NOT FOR DIAGNOSTIC USE. NOT FOR CLINICAL DECISION MAKING.</span>
+</footer>
+
+<!--
+  WHAT A HOST TELLS THIS VIEWER, BEFORE THE VIEWER LOADS.
+
+  `viewer-config.js` sets `window.VIEWER_CONFIG` and is the entire seam between a DICOMweb
+  viewer and a deployment's clinician surface. It carries the DICOMweb root, the tenant if
+  the origin segments by one, and the consumer class to declare -- all of which used to be
+  written into `app.js` and `dicomweb.js`, where they made this viewer unable to open any
+  archive that was not the MedicalOS Gateway.
+
+  THE VIEWER SHIPS ITS OWN, and a deployment REPLACES the file rather than adding one.
+  That is not a stylistic choice: the viewer's tree is mounted read-only in this project's
+  own stack, and a bind mount cannot create a mountpoint inside a read-only directory --
+  measured, `openat viewer-config.js: read-only file system`. A file that exists can be
+  mounted over; a file that does not cannot. The shipped defaults are a plain DICOMweb
+  client, which is what this viewer is when nobody has told it otherwise.
+
+  A CLASSIC SCRIPT, NOT A MODULE, and neither `defer` nor `async`: it has to have run
+  before the module below reads `window.VIEWER_CONFIG`, and a classic script in document
+  order is the only one of the four that guarantees it.
+-->
+<script src="./viewer-config.js"></script>
+<script type="module" src="./app.js"></script>
+  <!--
+    THE MODAL HOST. One element, emptied on close: a dialog that leaves its markup
+    behind is a dialog whose stale controls are still in the tab order.
+  -->
+  <div id="dialogs" hidden></div>
+
+  <!--
+    WHAT THE VIEWER SAYS OUT LOUD. Nothing in this surface had a live region at all: a
+    refusal, a filter result count and a measurement appearing or vanishing were visible
+    events and silent ones (WCAG 4.1.3).
+
+    PERSISTENT, AND NEVER `hidden`. A live region that is created, or unhidden, in the
+    same task that fills it is missed by several screen readers -- the region has to be
+    in the accessibility tree BEFORE the text lands in it. These two are here from first
+    paint and only ever have their text replaced.
+
+    TWO OF THEM, because the urgency differs. A study that failed to load interrupts;
+    "14 studies" waits for a pause. One region cannot be both, and swapping `role` on a
+    live node is the unreliable trick this avoids.
+  -->
+  <div id="live-polite" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="live-alert" class="sr-only" role="alert" aria-live="assertive" aria-atomic="true"></div>
+</body>
+</html>
