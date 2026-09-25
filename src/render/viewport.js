@@ -488,14 +488,37 @@ export class Viewport {
     gl.bindTexture(gl.TEXTURE_2D, this.overlayTexture);
     gl.uniform1i(this.u.u_overlay, 1);
 
+    // UNIT 2 IS BOUND WHETHER OR NOT THERE IS A FUSION, AND THAT IS THE WHOLE FIX.
+    //
+    // These three lines used to live inside `if (this.hasFusion)`. An unset sampler
+    // uniform is 0, so on every ordinary study -- which is nearly all of them, fusion
+    // being a PET/CT case -- `u_fusion` pointed at TEXTURE0, where `u_image` has an
+    // R16I texture bound. `u_image` is an `isampler2D` and `u_fusion` is a `sampler2D`:
+    // two samplers of DIFFERENT TYPES reading one texture unit, which is invalid in
+    // GLES 3.0 section 2.11.8 regardless of whether the shader's `if (u_hasFusion)`
+    // ever reads it. Validation happens at draw time against the BINDINGS, not against
+    // the branch taken.
+    //
+    // So `drawArrays` was rejected outright with GL_INVALID_OPERATION -- "Two textures
+    // of different types use the same sampler location" -- and the viewport painted
+    // NOTHING. Measured on a CT-only study before this change: `gl.getError()` = 1282
+    // and zero non-zero subpixels anywhere in the 1108x1139 canvas, while the series
+    // thumbnail beside it -- drawn through a 2D context, not this program -- had 726.
+    // That is the signature of the bug and the reason it read as a data problem: the
+    // pixels were fetched, decoded and windowed correctly, and then not drawn.
+    //
+    // `fusionTexture` is created in the constructor and carries its filter parameters
+    // from there, so binding it here costs nothing when it holds no image; an
+    // incomplete texture samples as zero and `u_hasFusion` keeps the shader off it.
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this.fusionTexture);
+    gl.uniform1i(this.u.u_fusion, 2);
+
     gl.uniform1i(this.u.u_hasFusion, this.hasFusion ? 1 : 0);
     if (this.hasFusion) {
       gl.uniform1f(this.u.u_fusionCenter, this.fusionWindow.center);
       gl.uniform1f(this.u.u_fusionWidth, this.fusionWindow.width);
       gl.uniform1f(this.u.u_fusionAlpha, this.fusionAlpha);
-      gl.activeTexture(gl.TEXTURE2);
-      gl.bindTexture(gl.TEXTURE_2D, this.fusionTexture);
-      gl.uniform1i(this.u.u_fusion, 2);
     }
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
