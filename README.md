@@ -45,7 +45,7 @@ window.VIEWER_CONFIG = {
 
 A host overrides by **replacing this file** — a bind mount, a build step, a handler that
 serves different bytes at this path. It does not edit it.
-`../deploy/compose/viewer-config.js` is that file for this repository's own deployment.
+`../medos/deploy/compose/viewer-config.js` is that file for this repository's own deployment.
 Nothing under `src/` reads anything but `window.VIEWER_CONFIG`.
 
 ## What it does not know

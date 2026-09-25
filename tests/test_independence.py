@@ -155,7 +155,7 @@ def test_the_viewer_ships_its_own_defaults_and_the_deployment_replaces_them() ->
     # THE OTHER SIDE OF THE SEAM IS NOT THIS FILE'S BUSINESS. That a deployment supplies
     # its own `viewer-config.js` and mounts it over this one is asserted in the platform's
     # suite (`tests/unit/test_viewer_deployment.py`), because it is a fact about a
-    # deployment. A viewer whose own tests read `deploy/compose/` is a viewer that knows
+    # deployment. A viewer whose own tests read `medos/deploy/compose/` is a viewer that knows
     # its host, which is the exact coupling this file exists to forbid.
 
 
