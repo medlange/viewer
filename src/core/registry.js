@@ -24,7 +24,7 @@
  * ----------------------------------------------------
  * `MOS-REL-108` forbids "an in-process plugin API -- no shared-library loading, no dynamic
  * module import, no user-supplied code executed inside a platform process", and
- * `services/catalogue.py` is how this repository already answers that: one ordinary
+ * `medos/services/catalogue.py` is how this repository already answers that: one ordinary
  * top-level import per shipped provider, a dictionary lookup, and an unknown key refused by
  * listing the known ones.
  *

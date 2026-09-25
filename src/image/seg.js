@@ -29,7 +29,7 @@
  * (0062,0001) SegmentationType FRACTIONAL carries probabilities, and rendering one as a
  * binary mask asserts a threshold nobody chose. `MOS-SVC-020` makes an operating point a
  * calibrated thing; inventing one in a viewer is exactly the "fabricated probability"
- * failure `services/lung_nodule/detector.py` refuses. FRACTIONAL is refused by name.
+ * failure `medos/services/lung_nodule/detector.py` refuses. FRACTIONAL is refused by name.
  *
  * Spec: MOS-CORE-038 (reversed at 0.4.0), MOS-SVC-020, MOS-IMG-066.
  * ===================================================================================== */

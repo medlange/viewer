@@ -519,7 +519,7 @@ export function buildStack(instances) {
  * FAILING THAT, 400/40 IS A CT ANSWER AND WAS GIVEN TO EVERYTHING. It is a soft-tissue
  * window in HOUNSFIELD UNITS, and it is the right fallback on CT for the reason below --
  * but it was returned unconditionally, for any modality, on any scale. MEASURED: the
- * synthetic PET of `tools/demo/seed_corpus.py` carries a concentration in BQML with a
+ * synthetic PET of `medos/tools/demo/seed_corpus.py` carries a concentration in BQML with a
  * body background of 1200 and a lesion at 24000, and W 400 / L 40 put every one of those
  * values past the top of the ramp. The panel rendered as a white rectangle. `presets.json`
  * records the same failure from the other side -- the Brain window on brain MR, "whites

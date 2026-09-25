@@ -182,7 +182,7 @@ def _code(text: str) -> str:
 
 
 def test_the_registry_cannot_load_a_contribution_dynamically() -> None:
-    """The property `services/catalogue.py` protects on the Python side.
+    """The property `medos/services/catalogue.py` protects on the Python side.
 
     Whether MOS-REL-108 reaches a static page is arguable -- the clause is about a platform
     PROCESS. The position taken is that the property it buys is worth the same here: a
