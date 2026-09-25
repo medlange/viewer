@@ -56,7 +56,7 @@ Nothing under `src/` reads anything but `window.VIEWER_CONFIG`.
   It calls no `/api/` of any kind.
 
 Both facts are asserted mechanically, not promised —
-`../tests/unit/test_viewer_independence.py`.
+`tests/test_independence.py`.
 
 ## Layout
 
@@ -81,16 +81,24 @@ src/
 
 ## Tests
 
-**Still in the shared tree**, at `../tests/unit/test_viewer_*.py` and `../tests/js/*.mjs`.
-Moving them into `viewer/tests/` is the next step of the separation and is not done: a
-test asserting how a *deployment* mounts this viewer is the deployment's test, not this
-tree's, and the six files currently mix the two.
+In `tests/`, beside the code they read. They need pytest and nothing else — no fixtures,
+no shared harness, no import from anywhere outside this directory — so they run from here:
 
 ```bash
-pytest tests/unit/test_viewer_architecture.py tests/unit/test_viewer_fusion.py \
-       tests/unit/test_viewer_layout.py tests/unit/test_viewer_prior.py \
-       tests/unit/test_viewer_cache_policy.py tests/unit/test_viewer_independence.py
+cd viewer && pytest tests
 ```
+
+`tests/js/` holds four harnesses that drive `src/image/` against real DICOM geometry under
+node. They are executed from the platform's suite, which is where the Docker and corpus
+machinery lives.
+
+**The rule for this directory: a test here may read `viewer/` and nothing else.** A viewer
+whose own suite reaches into a deployment is a viewer that knows its host, which is the
+coupling this separation exists to remove. The mirror halves — that *this* deployment
+mounts a configuration over `viewer-config.js`, and substitutes the MOS-SAFE-001 sentence
+into the response body — are asserted in `../tests/unit/test_viewer_deployment.py`. The
+direction is one-way: the platform may read the viewer, the viewer may not read the
+platform.
 
 ## Known host leak
 
