@@ -283,9 +283,18 @@ def test_every_string_the_layout_controls_show_exists_in_every_language() -> Non
     )
 
     folder = VIEWER / "i18n"
-    tables = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(folder.glob("*.json"))}
-    short = {code: sorted(asked - set(table)) for code, table in tables.items() if asked - set(table)}
+    tables = {
+        p.stem: json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted(folder.glob("*.json"))
+    }
+    short = {
+        code: sorted(asked - set(table))
+        for code, table in tables.items()
+        if asked - set(table)
+    }
     assert not short, (
         "the layout controls speak English in these languages:\n"
-        + "\n".join(f"    {code}: {', '.join(missing)}" for code, missing in sorted(short.items()))
+        + "\n".join(
+            f"    {code}: {', '.join(missing)}" for code, missing in sorted(short.items())
+        )
     )

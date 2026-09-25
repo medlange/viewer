@@ -371,16 +371,25 @@ def test_every_string_this_feature_shows_exists_in_every_language() -> None:
     missing from all twelve agrees perfectly while showing English to everybody.
     """
     app = _app()
-    asked = {k for k in re.findall(r"t\(\s*'(priors\.[A-Za-z]+)'", app)}
+    asked = set(re.findall(r"t\(\s*'(priors\.[A-Za-z]+)'", app))
     asked.add("rail.priors")
     assert len(asked) >= 5, f"only {sorted(asked)} — the scan is wrong, not the feature"
 
     folder = VIEWER / "i18n"
-    tables = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(folder.glob("*.json"))}
+    tables = {
+        p.stem: json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted(folder.glob("*.json"))
+    }
     assert len(tables) >= 11, "the language tables are missing"
 
-    short = {code: sorted(asked - set(table)) for code, table in tables.items() if asked - set(table)}
+    short = {
+        code: sorted(asked - set(table))
+        for code, table in tables.items()
+        if asked - set(table)
+    }
     assert not short, (
         "the prior comparison speaks English in these languages:\n"
-        + "\n".join(f"    {code}: {', '.join(missing)}" for code, missing in sorted(short.items()))
+        + "\n".join(
+            f"    {code}: {', '.join(missing)}" for code, missing in sorted(short.items())
+        )
     )

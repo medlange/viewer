@@ -57,7 +57,9 @@ def _regex_starts_here(out: list[str]) -> bool:
     if not seen:
         return True
     for word in ("return", "typeof", "case", "in", "of", "delete", "void", "instanceof"):
-        if seen.endswith(word) and (len(seen) == len(word) or not seen[-len(word) - 1].isalnum()):
+        if seen.endswith(word) and (
+            len(seen) == len(word) or not seen[-len(word) - 1].isalnum()
+        ):
             return True
     return seen[-1] in "(,=:[!&|?{};+-*%<>~^"
 
@@ -305,7 +307,9 @@ def test_state_notification_is_synchronous() -> None:
     repaint is a segmentation overlay on a slice, an intermediate state is a wrong
     picture."""
     code = _code(_js("core", "state.js"))
-    for deferred in ("queueMicrotask", "setTimeout", "requestAnimationFrame", "Promise.resolve"):
+    for deferred in (
+        "queueMicrotask", "setTimeout", "requestAnimationFrame", "Promise.resolve"
+    ):
         assert deferred not in code, (
             f"state.js defers notification via {deferred}; subscribers can then observe a "
             f"state no single set() produced"
@@ -537,7 +541,9 @@ def test_every_subscribed_state_key_is_actually_written_somewhere() -> None:
     # TEETH. This gate was green for three commits against a codebase that had the defect,
     # because nothing was subscribing yet. An empty check is not a passing check.
     assert subscribed, "no module subscribes to any state key -- this gate is checking nothing"
-    assert len(written) >= 2, f"only {written} is ever written; the scan is broken, not the code"
+    assert len(written) >= 2, (
+        f"only {written} is ever written; the scan is broken, not the code"
+    )
 
     dead = {
         module: sorted(keys - written)
@@ -562,7 +568,13 @@ def test_every_registered_contribution_module_is_imported_by_the_shell() -> None
     top-level import, the complete set of live contributions IS the import list.
     """
     shell = (VIEWER / "app.js").read_text(encoding="utf-8")
-    imported = set(re.findall(r"from\s+['\"][^'\"]*?/([\w-]+\.js)|import\s+['\"][^'\"]*?/([\w-]+\.js)", shell))
+    imported = set(
+        re.findall(
+            r"from\s+['\"][^'\"]*?/([\w-]+\.js)"
+            r"|import\s+['\"][^'\"]*?/([\w-]+\.js)",
+            shell,
+        )
+    )
     imported = {a or b for a, b in imported}
 
     registering = {
@@ -729,7 +741,10 @@ def test_a_series_mixing_photometric_interpretations_is_refused() -> None:
 
 
 def test_a_non_grayscale_image_is_refused_rather_than_read_as_grayscale() -> None:
-    """PALETTE COLOR or RGB read as one channel is not a degraded picture, it is a different one."""
+    """PALETTE COLOR or RGB read as one channel is not a degraded picture.
+
+    It is a different one.
+    """
     code = _code(_js("image", "volume.js"))
     assert "unsupported_photometric_interpretation" in code, (
         "buildStack accepts any photometric interpretation it does not recognise"
@@ -1018,7 +1033,10 @@ def test_the_offset_is_undone_in_the_intercept_so_hu_is_unchanged() -> None:
     half wrong, which is easier to notice but no more correct.
     """
     code = _code(_js("render", "viewport.js"))
-    line = next((ln for ln in code.splitlines() if "u_intercept" in ln and "uniform1f" in ln), "")
+    line = next(
+        (ln for ln in code.splitlines() if "u_intercept" in ln and "uniform1f" in ln),
+        "",
+    )
     assert "storedOffset" in line, (
         f"the intercept uniform is set from {line.strip()!r}, which does not undo the "
         "offset setFrame applied, so every unsigned study renders shifted by 32768*slope"
@@ -1080,7 +1098,9 @@ def test_the_unit_is_read_from_the_header_not_assumed_from_the_pipeline() -> Non
                       ("00281054", "RescaleType"),
                       ("00541001", "Units")):
         assert tag in loader, f"volume.js does not read ({tag}) {what}"
-    assert "valueUnit" in loader, "the loader reads the attributes but derives no unit from them"
+    assert "valueUnit" in loader, (
+        "the loader reads the attributes but derives no unit from them"
+    )
 
 
 def test_no_renderer_hardcodes_a_unit() -> None:
@@ -1342,7 +1362,9 @@ def test_no_module_declares_a_dicom_tag_it_never_reads() -> None:
     # were FOUND, which meant the gate failed the moment every tag was read or justified --
     # it could only pass while the defect existed. What has to be non-empty is the set of
     # tables looked at.
-    assert scanned >= 3, f"only {scanned} tag table(s) scanned — the scan is broken, not the code"
+    assert scanned >= 3, (
+        f"only {scanned} tag table(s) scanned — the scan is broken, not the code"
+    )
     assert not unread, (
         f"these modules declare DICOM tags that no code path reads: {unread}. A tag in the "
         "table and nowhere else records an intention nobody carried out."
@@ -1788,7 +1810,13 @@ def test_an_unrecognised_transfer_function_falls_to_the_standard_default() -> No
     the standard already says what to do when the attribute says nothing.
     """
     code = _code(_js("render", "viewport.js"))
-    line = next((ln for ln in code.splitlines() if "u_voiFunction," in ln and "uniform1i" in ln), "")
+    line = next(
+        (
+            ln for ln in code.splitlines()
+            if "u_voiFunction," in ln and "uniform1i" in ln
+        ),
+        "",
+    )
     assert line, "the transfer function is never sent to the shader"
     table = code[code.index("const voi ="):]
     table = table[: table.index(";")]
@@ -1944,7 +1972,9 @@ def test_slab_thickness_is_measured_along_the_axis_it_projects() -> None:
 
     # And each slab asks for ITS OWN plane. Passing one function three times is no help if
     # two of the callers name the same plane.
-    steps = re.findall(r"(?<!function )slabPlan\([^)]*?,\s*planeStepMm\(stack,\s*([^)]+)\)", code)
+    steps = re.findall(
+        r"(?<!function )slabPlan\([^)]*?,\s*planeStepMm\(stack,\s*([^)]+)\)", code
+    )
     assert steps == ["PLANES.AXIAL", "PLANES.CORONAL", "PLANES.SAGITTAL"], (
         f"the three slab plans do not each measure along their own plane's axis: {steps}"
     )
@@ -2525,7 +2555,9 @@ def test_one_to_one_is_a_mode_re_derived_every_draw() -> None:
     assert body.index("p.viewport.oneToOne") < body.index("p.viewport.render()"), (
         "1:1 is re-derived after the render, so the frame on screen is one zoom behind"
     )
-    assert body.index("p.viewport.oneToOne") < body.index("Math.round(p.viewport.zoom * 100)"), (
+    assert body.index("p.viewport.oneToOne") < body.index(
+        "Math.round(p.viewport.zoom * 100)"
+    ), (
         "1:1 is re-derived after the readout is written, so the percentage beside the "
         "picture is not the zoom the picture is drawn at"
     )
@@ -2571,8 +2603,11 @@ def test_choosing_a_zoom_by_hand_leaves_the_one_to_one_mode() -> None:
     assert "oneToOne = false" in drag, (
         "the zoom drag does not leave 1:1, so dragging is undone by the next redraw"
     )
-    for control in ("function resetView()", "buildZoomButtons()"):
-        pass
+    # A `for control in (...): pass` loop stood here, naming `function resetView()` and
+    # `buildZoomButtons()` and asserting nothing about either. It read as "both of these
+    # are checked"; measured, `buildZoomButtons()` is 72 characters, wires handlers and
+    # sets no view state at all, so there was never a body it could have had. Only
+    # `resetView()` holds the property, and it is checked below.
     reset = app[app.index("function resetView()"):]
     reset = reset[: reset.index("\n}")]
     assert "oneToOne = false" in reset, "reset leaves the 1:1 mode set"
@@ -2815,7 +2850,10 @@ def test_the_shear_flag_means_what_the_volume_layout_does() -> None:
     mpr = _code(_js("image", "mpr.js"))
     body = mpr[mpr.index("function shearOf("):]
     body = body[: body.index("\nfunction ")]
-    assert re.search(r"sheared:\s*Math\.max\(\.\.\.rounded\)\s*!==\s*Math\.min\(\.\.\.rounded\)", body), (
+    assert re.search(
+        r"sheared:\s*Math\.max\(\.\.\.rounded\)\s*!==\s*Math\.min\(\.\.\.rounded\)",
+        body,
+    ), (
         "the shear flag is decided from a threshold on the raw offsets rather than from "
         "the rounded displacement the volume layout applies"
     )
@@ -3368,7 +3406,9 @@ def test_every_plane_reports_its_own_depth() -> None:
     body = body[: body.index("\n}")]
 
     assert "isOblique(plane)" in body, "an oblique falls through to the source's slice count"
-    assert re.search(r"plane === PLANES\.CORONAL\) return geometryOf\(stack\)\.volumeRows", body), (
+    assert re.search(
+        r"plane === PLANES\.CORONAL\) return geometryOf\(stack\)\.volumeRows", body
+    ), (
         "the coronal does not index the VOLUME's height, so on a sheared stack it stops "
         "short of the correction and on any stack it reports the slice count instead"
     )
@@ -3554,7 +3594,9 @@ def test_an_angle_is_measured_in_patient_space_and_not_in_pixels() -> None:
         "the ray's components are scaled by the wrong axis, which is right on square "
         "pixels and wrong on every anisotropic frame"
     )
-    assert re.search(r"\(b\.x - vertex\.x\) \* colMm, \(b\.y - vertex\.y\) \* rowMm", body), body[:200]
+    assert re.search(
+        r"\(b\.x - vertex\.x\) \* colMm, \(b\.y - vertex\.y\) \* rowMm", body
+    ), body[:200]
     assert "if (!nu || !nv) return NaN;" in body, (
         "a zero-length ray has no direction, and any number returned for it is invented"
     )
@@ -4103,7 +4145,9 @@ def test_a_miss_on_the_annotation_layer_still_reaches_the_window_drag() -> None:
     )
     # A PREVIEW IS NOT A TARGET. It belongs to a gesture in progress and has no id, so a
     # hit on it would select nothing and eat the click that was completing the gesture.
-    assert re.search(r"\.annot-shape\.annot-preview \{[^}]*pointer-events:\s*none", styles, re.S), (
+    assert re.search(
+        r"\.annot-shape\.annot-preview \{[^}]*pointer-events:\s*none", styles, re.S
+    ), (
         "the in-progress shape takes pointer events, so the gesture drawing it can be "
         "interrupted by its own preview"
     )
@@ -4332,9 +4376,13 @@ def test_a_position_is_a_point_in_the_patient_not_a_slice_number() -> None:
     )
 
     annotations = _code(_js("render", "annotations.js"))
-    assert "annot-cross-off" in annotations, "an off-plane crosshair is drawn as an on-plane one"
+    assert "annot-cross-off" in annotations, (
+        "an off-plane crosshair is drawn as an on-plane one"
+    )
     styles = (VIEWER / "styles.css").read_text(encoding="utf-8")
-    assert ".annot-cross-off" in styles, "the off-plane crosshair has no rule, so it looks identical"
+    assert ".annot-cross-off" in styles, (
+        "the off-plane crosshair has no rule, so it looks identical"
+    )
 
 
 def test_a_plane_button_says_what_the_reader_will_see() -> None:
@@ -4553,10 +4601,16 @@ def test_a_non_image_series_is_told_what_actually_happens_to_it() -> None:
     promised = set(re.findall(r"'([A-Z]+)'", declared.group(1)))
     assert promised, "the list is empty, but the message still promises something"
 
-    handled = set(re.findall(r"dv\(x, '00080060'\) === '([A-Z]+)'", _fnbody(app, "async function loadDerived")))
+    handled = set(
+        re.findall(
+            r"dv\(x, '00080060'\) === '([A-Z]+)'",
+            _fnbody(app, "async function loadDerived"),
+        )
+    )
     assert promised == handled, (
         f"the surface promises {sorted(promised)} are layered and the loader reads "
-        f"{sorted(handled)}; a reader clicking {sorted(promised - handled) or sorted(handled - promised)} "
+        f"{sorted(handled)}; a reader clicking "
+        f"{sorted(promised - handled) or sorted(handled - promised)} "
         "is told something that is not true of it"
     )
 
@@ -5427,7 +5481,8 @@ def test_every_language_answers_every_key_the_others_do() -> None:
         )
 
     names = re.findall(
-        r"'[^']+':\s*'([A-Za-z]+)',", re.search(r"const TOOL_KEYS = \{(.*?)\n\};", app, re.S).group(1)
+        r"'[^']+':\s*'([A-Za-z]+)',",
+        re.search(r"const TOOL_KEYS = \{(.*?)\n\};", app, re.S).group(1),
     )
     assert len(names) >= 6, f"TOOL_KEYS yielded {names}; the parse is wrong, not the map"
 
@@ -5437,7 +5492,12 @@ def test_every_language_answers_every_key_the_others_do() -> None:
         for m in re.finditer(r"^  hint: '", tools_src, re.M)
     }
     assert hinted, "no tool carries a hint; the hint keys below would be vacuous"
-    ids = dict(re.findall(r"'([^']+)':\s*'([A-Za-z]+)',", re.search(r"const TOOL_KEYS = \{(.*?)\n\};", app, re.S).group(1)))
+    ids = dict(
+        re.findall(
+            r"'([^']+)':\s*'([A-Za-z]+)',",
+            re.search(r"const TOOL_KEYS = \{(.*?)\n\};", app, re.S).group(1),
+        )
+    )
     expected = {f"tool.{n}" for n in names} | {
         f"tool.hint{ids[i][0].upper()}{ids[i][1:]}" for i in hinted if i in ids
     }
@@ -5446,7 +5506,7 @@ def test_every_language_answers_every_key_the_others_do() -> None:
     assert not absent, (
         "the viewer asks for these keys and no table answers, so they are English in "
         "every language -- and silently, because falling back to English is what `t()` "
-        f"is FOR:\n" + "\n".join(f"    {key}" for key in absent)
+        "is FOR:\n" + "\n".join(f"    {key}" for key in absent)
     )
 
     sources = "\n".join(
@@ -6098,7 +6158,9 @@ def test_the_chrome_mirrors_and_the_anatomy_never_does() -> None:
             f"`{rule.split()[0]}` no longer places itself physically; the laterality "
             f"markers are the patient's sides and must not follow the reader's"
         )
-    assert "inset-inline" not in styles[styles.index(".hud-left"):styles.index(".hud-left") + 400], (
+    assert "inset-inline" not in styles[
+        styles.index(".hud-left"):styles.index(".hud-left") + 400
+    ], (
         "an edge marker was given a logical offset, which mirrors R and L in Arabic"
     )
 def test_no_rule_claims_something_it_cannot_do() -> None:
@@ -6226,7 +6288,11 @@ def test_there_is_one_chevron_and_it_comes_from_the_icon_set() -> None:
         assert selector in styles, f"{selector} has no rule"
     # ANCHORED AT THE LINE START: without it the RTL rule, whose selector CONTAINS
     # this one, satisfied the search while the rule itself said something else.
-    assert re.search(r"^\.wl-expand\[aria-expanded=\"true\"\] \.wl-expand-mark \{ transform: none", styles, re.M), (
+    assert re.search(
+        r"^\.wl-expand\[aria-expanded=\"true\"\] \.wl-expand-mark \{ transform: none",
+        styles,
+        re.M,
+    ), (
         "the expanded state does not put the chevron back to pointing down"
     )
     assert re.search(r"rotate\(-90deg\)", styles) and re.search(r"rotate\(90deg\)", styles), (
@@ -6538,7 +6604,9 @@ def test_a_panel_that_leaves_the_grid_gives_its_graphics_context_back() -> None:
     # 2. `setLayout` uses it, and uses it before the nodes go.
     layout = app[app.index("function setLayout("):]
     layout = layout[: layout.index("\nfunction ")]
-    assert "el.grid.innerHTML = ''" in layout, "setLayout no longer clears the grid; re-read this test"
+    assert "el.grid.innerHTML = ''" in layout, (
+        "setLayout no longer clears the grid; re-read this test"
+    )
     assert layout.index("viewport.dispose()") < layout.index("el.grid.innerHTML = ''"), (
         "`setLayout` drops the panel nodes without disposing their viewports first, so "
         "every layout change leaks one WebGL context per panel until the browser starts "
@@ -6648,7 +6716,10 @@ def test_a_refused_frame_takes_its_caption_with_it() -> None:
     assert body, "no blankHud: the two paths that blank a panel have no shared definition"
     b = body.group(1)
     for needed, why in (
-        ("classList.remove('projecting')", "the PROJECTION chip is a class and survives an emptied corner"),
+        (
+            "classList.remove('projecting')",
+            "the PROJECTION chip is a class and survives an emptied corner",
+        ),
         ("p.hud.tr.textContent = ''", "the window and level stay on a panel with no frame"),
         ("p.hud.br.textContent = ''", "the slice counter stays"),
         ("p.hud.scale.hidden = true", "the scale bar stays, measuring nothing"),

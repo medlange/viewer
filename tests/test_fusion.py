@@ -276,7 +276,10 @@ def test_every_string_the_fusion_shows_exists_in_every_language() -> None:
     assert len(asked) >= 6, f"the scan found only {sorted(asked)}"
 
     folder = VIEWER / "i18n"
-    tables = {p.stem: json.loads(p.read_text(encoding="utf-8")) for p in sorted(folder.glob("*.json"))}
+    tables = {
+        p.stem: json.loads(p.read_text(encoding="utf-8"))
+        for p in sorted(folder.glob("*.json"))
+    }
     short = {code: sorted(asked - set(t)) for code, t in tables.items() if asked - set(t)}
     assert not short, (
         "the fusion speaks English in these languages -- including its refusals, which is "

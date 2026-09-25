@@ -88,7 +88,10 @@ def test_the_surface_header_is_sent_only_when_a_host_asks_for_it() -> None:
         "the constructor defaults the consumer class or its header to something, so a "
         "viewer nobody configured still declares one"
     )
-    assert "this.surfaceHeader = surfaceHeader && surface ? String(surfaceHeader) : null;" in wire, (
+    assert (
+        "this.surfaceHeader = surfaceHeader && surface ? String(surfaceHeader) : null;"
+        in wire
+    ), (
         "a header name without a value, or a value without a name, is accepted -- the "
         "first sends a blank assertion and the second has nowhere to go"
     )
