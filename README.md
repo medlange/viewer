@@ -18,7 +18,7 @@ python -m http.server 8080 --directory viewer
 ```
 
 There is **no build step, no bundler, no package manager and no runtime dependency**.
-`index.html` loads ES modules directly from `src/`; 48 files, ~17 000 lines, all of them
+`index.html` loads ES modules directly from `src/`; 48 files, ~20 000 lines, all of them
 in this tree. Nothing is fetched at run time from anywhere but the origin it is configured
 against. The reasoning is recorded in `../docs/adr/BUILD_VS_ADOPT.md`: a dependency
 delivered into a medical device's UI is a SOUP element under IEC 62304 §8.1.2 whose
