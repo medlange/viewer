@@ -22,7 +22,7 @@
  *                 an absent header is the honest statement that nobody asked.
  *
  * A HOST OVERRIDES BY REPLACING THIS FILE -- a bind mount, a build step, a handler that
- * serves different bytes at this path. `deploy/compose/viewer-config.js` in this
+ * serves different bytes at this path. `medos/deploy/compose/viewer-config.js` in this
  * repository is that file for the MedicalOS deployment, and its header says what each of
  * its values buys. Nothing in `src/` reads anything but `window.VIEWER_CONFIG`.
  * ===================================================================================== */
