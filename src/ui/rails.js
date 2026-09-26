@@ -16,7 +16,7 @@
  * whole contract with the shell, and it is why `onResize` is a required argument rather
  * than something helpful this file imports for itself.
  *
- * IT MUST NOT IMPORT THE SHELL. `tests/unit/test_viewer_architecture.py` globs
+ * IT MUST NOT IMPORT THE SHELL. `viewer/tests/test_architecture.py` globs
  * `src/ui/*.js` and fails any that reaches back into `app.js`; the shell passes what this
  * module needs. That is not ceremony -- a UI module that imports the shell cannot be
  * reasoned about without reading the shell, and the shell is 2800 lines.

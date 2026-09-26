@@ -11,7 +11,7 @@
  * guarantees. About NAMES them, as the conditions this build is held to. It does NOT
  * claim they are verified: a dialog asserting its own conformance is exactly the failure
  * the requirement was written against, and the gates in
- * `tests/unit/test_viewer_architecture.py` are where conformance is actually argued.
+ * `viewer/tests/test_architecture.py` are where conformance is actually argued.
  *
  * Spec: MOS-UI-009a, MOS-SAFE-001, MOS-CORE-001.
  * ===================================================================================== */

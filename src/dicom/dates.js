@@ -19,7 +19,7 @@
  * worklist among them, so it is the form a reader arrives with. `02-06-2016` would be the
  * form that cannot be trusted across locales; this one has no such reading.
  *
- * NOT IMPORTED FROM THE SHELL. `tests/unit/test_viewer_architecture.py` fails any
+ * NOT IMPORTED FROM THE SHELL. `viewer/tests/test_architecture.py` fails any
  * `src/ui/*.js` that reaches back into `app.js`, for the reason that file states: a UI
  * module which imports the shell cannot be reasoned about without reading the shell. So
  * the shared thing moves DOWN here rather than the panel reaching up.

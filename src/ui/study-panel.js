@@ -88,7 +88,7 @@ export default register({
 
   /**
    * A panel receives an element and subscribes. It does not import the shell, and the
-   * shell does not render it -- `tests/unit/test_viewer_architecture.py` fails either.
+   * shell does not render it -- `viewer/tests/test_architecture.py` fails either.
    */
   mount(root) {
     render(root);
