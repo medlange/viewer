@@ -32,6 +32,18 @@
  * ===================================================================================== */
 
 import { KINDS, register } from '../core/registry.js';
+// THE WORDS COME FROM A SIBLING, NOT FROM THE TRANSLATOR.
+//
+// This file renders `66.2 mm`, and `test_translation_never_reaches_a_measured_value_or_
+// the_safety_statement` forbids it from importing `t` for exactly that reason: a file that
+// can reach both a measured value and the translator puts the value one edit away from
+// being translated. The panel was nevertheless the one surface outside the translation
+// system entirely -- for a screen-reader user in a non-English locale every control here
+// spoke English while every label beside it did not.
+//
+// `measurements-labels.js` holds both halves apart: it sees the translator and cannot see a
+// measurement; this file sees measurements and cannot see the translator. See its header.
+import { labels, removeAria, onLanguageChange } from './measurements-labels.js';
 import { icon } from './icons.js';
 import { get, set, subscribeTo } from '../core/state.js';
 import {
@@ -93,7 +105,7 @@ function readerValue(m) {
     // A NOTE'S VALUE IS ITS TEXT. There is no number, and a row that printed one
     // -- even a dash -- would put a note in the same column as a measurement and
     // invite it to be read as one.
-    return String(m.text || '(empty)');
+    return String(m.text || labels().emptyNote);
   }
   if (m.kind === 'roi') {
     // MEAN AND SD TOGETHER, always. A mean alone invites a heterogeneous region to be read
@@ -116,10 +128,13 @@ function readerValue(m) {
 const GROUP_KEY = 'medos.viewer.meas.group';
 const FOLD_KEY = 'medos.viewer.meas.folded';
 
+// THE LABELS ARE LOOKED UP AT RENDER TIME, NOT HERE. A module-level `t()` would run once
+// at import, before `startI18n` has loaded a table, and the panel would keep English
+// labels for the rest of the session no matter what language was chosen.
 const GROUPINGS = [
-  { id: 'none', label: 'No grouping' },
-  { id: 'kind', label: 'By kind' },
-  { id: 'slice', label: 'By slice' },
+  { id: 'none', label: 'groupNone' },
+  { id: 'kind', label: 'groupKind' },
+  { id: 'slice', label: 'groupSlice' },
 ];
 
 function readStore(key, fallback) {
@@ -225,14 +240,18 @@ function render(root) {
   if (measurements.length) {
     const mode = readStore(GROUP_KEY, 'none');
     const foldedGroups = new Set(readStore(FOLD_KEY, []));
+    // ОДИН ВЫЗОВ НА ОТРИСОВКУ, а не по одному на строку таблицы: `labels()` строит
+    // объект, и вызов его внутри цикла по измерениям означал бы двадцать построений
+    // на двадцать строк.
+    const L = labels();
     parts.push(
-      '<div class="meas-head">Yours '
-      + '<span class="muted">this session, not saved</span>'
+      `<div class="meas-head">${escape(L.yours)} `
+      + `<span class="muted">${escape(L.notSaved)}</span>`
       // THE PANEL'S OWN SETTINGS, beside the thing they arrange rather than in a
       // dialog two clicks away: this is changed while reading, not configured once.
-      + '<select class="meas-group" aria-label="Group the measurements">'
+      + `<select class="meas-group" aria-label="${escape(L.groupAria)}">`
       + GROUPINGS.map((g) => (
-        `<option value="${g.id}"${g.id === mode ? ' selected' : ''}>${escape(g.label)}</option>`
+        `<option value="${g.id}"${g.id === mode ? ' selected' : ''}>${escape(L[g.label])}</option>`
       )).join('')
       + '</select></div>',
     );
@@ -293,18 +312,28 @@ function render(root) {
       // CSV, because it was still taken.
       + `<button class="linkish" data-eye="${escape(String(m.id))}" `
       + `aria-pressed="${hidden.has(String(m.id))}" `
-      + `aria-label="${hidden.has(String(m.id)) ? 'Show' : 'Hide'} this measurement" `
-      + `title="${hidden.has(String(m.id)) ? 'Show' : 'Hide'} on the image">`
+      + `aria-label="${escape(hidden.has(String(m.id))
+          ? L.showThis
+          : L.hideThis)}" `
+      + `title="${escape(hidden.has(String(m.id))
+          ? L.showOnImage
+          : L.hideOnImage)}">`
       + `${icon(hidden.has(String(m.id)) ? 'eyeOff' : 'eye')}</button>`
       + `<button class="linkish" data-drop="${escape(String(m.id))}" `
-      + `aria-label="Remove this ${escape(m.kind)} measurement" `
-      + `title="Remove this measurement">×</button></td></tr>`
+      // THE KIND REUSES THE TOOL'S OWN TRANSLATION rather than a second one: `tool.length`
+      // and `tool.angle` are already in every table, and a kind with no entry falls back to
+      // the raw word, which is what the reader sees elsewhere too.
+      + `aria-label="${escape(removeAria(m.kind))}" `
+      + `title="${escape(L.remove)}">×</button></td></tr>`
       )).join('') + '</table>');
     }
   }
 
   if (srMeasurements && srMeasurements.length) {
-    parts.push('<div class="meas-head">From the model <span class="muted">DICOM SR</span></div>');
+    // `DICOM SR` IS NOT TRANSLATED. The table's own `_comment` says measured values,
+    // units and identifiers are vocabulary; a standard's name is the same kind of thing.
+    parts.push(`<div class="meas-head">${escape(labels().fromModel)} `
+      + '<span class="muted">DICOM SR</span></div>');
     parts.push('<table class="meas">' + srMeasurements.map((r) => (
       `<tr><td>${escape(r.name)}</td>`
       + `<td class="num">${escape(modelValue(r.value))}</td>`
@@ -312,7 +341,8 @@ function render(root) {
     )).join('') + '</table>');
   }
 
-  root.innerHTML = parts.length ? parts.join('') : '<p class="muted">no measurements yet</p>';
+  root.innerHTML = parts.length ? parts.join('')
+    : `<p class="muted">${escape(labels().none)}</p>`;
 
   for (const button of root.querySelectorAll('[data-drop]')) {
     button.onclick = (e) => {
@@ -414,7 +444,7 @@ function render(root) {
      */
     const noteCell = row.querySelector('td.note-text');
     if (noteCell) {
-      noteCell.title = 'Double-click to edit this note';
+      noteCell.title = labels().editNote;
       noteCell.ondblclick = (e) => {
         e.stopPropagation();
         const id = row.dataset.m;
@@ -423,8 +453,9 @@ function render(root) {
         const input = document.createElement('input');
         input.className = 'meas-label';
         input.value = current.text || '';
-        input.placeholder = 'Note';
-        input.setAttribute('aria-label', 'Text for this note');
+        const L2 = labels();
+        input.placeholder = L2.notePlaceholder;
+        input.setAttribute('aria-label', L2.noteAria);
         noteCell.textContent = '';
         noteCell.appendChild(input);
         input.focus();
@@ -458,7 +489,7 @@ function render(root) {
 
     const cell = row.querySelector('td');
     if (!cell) continue;
-    cell.title = 'Double-click to name this measurement';
+    cell.title = labels().nameHint;
     cell.ondblclick = (e) => {
       e.stopPropagation();
       const id = row.dataset.m;
@@ -468,7 +499,7 @@ function render(root) {
       input.className = 'meas-label';
       input.value = current.label || '';
       input.placeholder = current.kind;
-      input.setAttribute('aria-label', 'Name this measurement');
+      input.setAttribute('aria-label', labels().nameAria);
       cell.textContent = '';
       cell.appendChild(input);
       input.focus();
@@ -519,8 +550,14 @@ export default register({
     // by the eye and left out of the subscription, so the state changed and nothing
     // re-rendered: the eye did nothing at all, and every static gate still passed
     // because the code they read was present and correct.
-    return subscribeTo(['measurements', 'srMeasurements', 'panels', 'active',
-                        'selectedMeasurement', 'hiddenMeasurements'],
+    const stop = subscribeTo(['measurements', 'srMeasurements', 'panels', 'active',
+                              'selectedMeasurement', 'hiddenMeasurements'],
       () => render(root));
+    // A LANGUAGE CHANGE IS A REASON TO REPAINT, and this panel had no such subscription:
+    // every label it renders comes from `t()` at render time, so without this the panel
+    // kept the previous language until some unrelated state happened to change. The same
+    // pattern as `study-panel.js`, and for the same reason.
+    const stopLang = onLanguageChange(() => render(root));
+    return () => { stop(); stopLang(); };
   },
 });

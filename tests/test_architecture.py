@@ -5286,6 +5286,42 @@ def test_translation_never_reaches_a_measured_value_or_the_safety_statement() ->
     )
 
 
+def test_the_file_that_holds_the_words_cannot_see_a_measurement() -> None:
+    """The split that lets the measurements panel be translated at all.
+
+    `test_translation_never_reaches_a_measured_value_or_the_safety_statement` forbids
+    `measurements-panel.js` from importing the translator, and the reason it gives is the
+    right one: a file that can reach both a measured value and `t()` puts `66.2 mm` one edit
+    away from being translated. That left the panel as the one surface outside the twelve
+    tables entirely -- a screen-reader user in a non-English locale heard English for every
+    control in it while every label beside it translated.
+
+    Both hold by keeping the two apart: `measurements-labels.js` sees the translator and
+    MUST NOT be able to see a measurement. Asserted here rather than left to the arrangement
+    of imports, because an arrangement is what the next edit changes.
+    """
+    words = _code(_js("ui", "measurements-labels.js"))
+
+    # NOTHING FROM THE IMAGE OR THE STATE: those are where a value would come from.
+    for forbidden in ("image/", "units.js", "measure.js", "core/state.js"):
+        assert forbidden not in words, (
+            f"measurements-labels.js imports {forbidden}, so the file holding the "
+            "translator can now reach a measured value"
+        )
+    # AND NO LOCALE-AWARE NUMBER FORMATTING, the mechanism by which a value would change
+    # appearance with the language even without being imported.
+    assert "Intl.NumberFormat" not in words and "toLocaleString" not in words, (
+        "measurements-labels.js formats a number through the locale"
+    )
+    # THE PANEL TAKES WORDS, NOT THE TRANSLATOR. That it does not reach the translator is
+    # asserted by the gate that owns that rule; repeating it here would be a second copy of
+    # one constant.
+    panel = _code(_js("ui", "measurements-panel.js"))
+    assert "from './measurements-labels.js'" in panel, (
+        "the panel does not get its words from the labels module"
+    )
+
+
 def test_a_panel_appears_because_it_registered_not_because_someone_wrote_its_markup() -> None:
     """Adding a panel was a registration AND an edit to index.html. Now it is not.
 
@@ -5692,8 +5728,18 @@ def test_a_note_can_be_rewritten_after_it_is_written() -> None:
         "nothing in the panel addresses the cell a note's text lives in, so the text "
         "cannot be edited after it is first written"
     )
-    assert "aria-label', 'Text for this note'" in panel or 'Text for this note' in panel, (
-        "the note editor has no accessible name"
+    # THE ACCESSIBLE NAME, not the English words it is spelled with. This looked for the
+    # literal `Text for this note` -- which is the mistake the comment four assertions down
+    # describes, made above it: when the panel was brought into the translation system the
+    # string moved to `measurements-labels.js`, and a correct change failed a gate reading
+    # characters. What matters is that the input is given a name, and that the name has a
+    # definition; `test_every_language_answers_every_key_the_others_do` covers the tables.
+    assert re.search(r"""setAttribute\(\s*'aria-label'\s*,\s*[\w.]*noteAria\s*\)""", panel), (
+        "the note editor is created without an accessible name"
+    )
+    words = _code(_js("ui", "measurements-labels.js"))
+    assert "noteAria: t('meas.noteAria'" in words, (
+        "measurements-labels.js does not define the note editor's accessible name"
     )
     # THE FROZEN RECORD IS REPLACED, NOT MUTATED -- the rule the label rename already states.
     body = panel[panel.index("const commitNote"):][:700]

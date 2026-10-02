@@ -1,6 +1,7 @@
-# Viewer
+# Medlange Viewer
 
-A DICOMweb study viewer. It runs in a browser, reads DICOM over
+Part of the [Medlange](../README.md) umbrella: a DICOMweb study viewer. It runs in a
+browser, reads DICOM over
 [PS3.18](https://dicom.nema.org/medical/dicom/current/output/html/part18.html) QIDO-RS and
 WADO-RS, and renders CT, MR and PT with WebGL2.
 
