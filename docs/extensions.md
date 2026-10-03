@@ -79,5 +79,5 @@ Study `src/tools/measure-tools.js`.
 
 `viewer/tests/` are Python tests that read the source the way a reviewer does — the
 architectural gates (shell imports, i18n parity, state wiring) run over your module
-automatically. Add a `test_your_thing.py` for your feature's own contract, the way
-`test_ai_action.py` pins the analyze dialog's request shape.
+automatically. Add a test module for your feature's own contract, the way the analyze
+dialog's test pins its request shape.
