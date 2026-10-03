@@ -1393,6 +1393,12 @@ body.rail-dragging { cursor: col-resize; user-select: none; }
  * ===================================================================================== */
 .panel { flex: 1; padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
+/* DRAG-DROP TARGET STATE (U4): the whole worklist accepts files. The outline is the
+   only affordance — a reader dragging a folder must see WHERE it lands before they
+   let go, and the class is removed on drop/leave so it never lingers as decoration. */
+#study-list.wl-drop { outline: 2px dashed var(--line-ctl); outline-offset: -6px; }
+
+
 .wl-head {
   display: flex;
   align-items: center;

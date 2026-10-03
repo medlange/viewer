@@ -158,6 +158,15 @@
     <div class="wl-head">
       <h2 data-i18n="wl.studies">Studies</h2>
       <span class="wl-count" id="wl-count" role="status"></span>
+      <!--
+        UPLOAD LANDS HERE (U4). A reader who receives a CD-ROM or a folder of Part-10
+        files has no way in: the archive is read-only from this surface's point of view.
+        The button opens a file/directory picker; dropping files anywhere on the worklist
+        works too. Both paths POST one multipart/related STOW-RS batch to the same
+        DICOMweb root the reads use, so the credential injection and the tenant segment
+        are the ones nginx and the Gateway already enforce.
+      -->
+      <button class="tool" id="wl-upload" type="button" data-i18n="wl.upload">Upload DICOM</button>
       <button class="tool" id="wl-clear" type="button" data-i18n="wl.clearFilters">Clear filters</button>
     </div>
 

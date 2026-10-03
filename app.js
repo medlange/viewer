@@ -80,6 +80,10 @@ import { initRails, movePanel, railOf, toggleRail } from './src/ui/rails.js';
 import {
   loadViewerConfig, applyViewerConfig, disabledPanels, deepLinkStudyEnabled,
 } from './src/core/config.js';
+// THE WORKLIST UPLOAD VERB (U4): files from disk into the archive through the same
+// DICOMweb root every read uses. An import plus one bindUpload call is the whole
+// integration, the same shape as the analyze action.
+import { bindUpload } from './src/ui/upload.js';
 
 
 /* ----------------------------------------------------------------------------------
@@ -4599,6 +4603,14 @@ buildZoomButtons();
 buildObliqueButtons();
 attachGlobalInteraction();
 bindWorklist();
+// U4: the worklist gains a write verb. Same-origin through nginx, so the Gateway
+// token is injected exactly where the reads' is; refresh reuses showStudies rather
+// than a page reload, because a reload would drop the reader to the top of the list.
+bindUpload({
+  root: dicomWebRoot(),
+  onDone: () => showStudies(),
+  announce: (message, kind) => notice(message, kind),
+});
 
 // THE CHROME'S OWN CONTROLS. About and Preferences are modals over the page rather than
 // routes, because a reader opening Preferences mid-read has not stopped reading: losing

@@ -196,5 +196,9 @@
   "ai.running": "Running… {state} {step}",
   "ai.done": "Analysis complete. SEG and SR were stored to the study.",
   "ai.refresh": "Show results",
-  "ai.failed": "The job ended as {state}."
+  "ai.failed": "The job ended as {state}.",
+  "wl.upload": "Upload DICOM",
+  "upload.sending": "Uploading {n} file(s)…",
+  "upload.done": "Stored {n} file(s) to the archive",
+  "upload.partial": "Stored {stored} of {n}; {failed} refused by the archive"
 }
