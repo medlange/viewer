@@ -184,5 +184,16 @@
   "wl.studyDescription": "Description de l'examen",
   "wl.unreachable": "L’archive n’a pas pu être contactée.",
   "zoom.fit": "L'image entière dans le panneau, dans ses propres proportions",
-  "zoom.oneToOne": "Un pixel d'image par pixel d'écran · et non un millimètre par millimètre, ce qu'aucun navigateur ne peut savoir — utilisez la barre d'échelle pour les dimensions"
+  "zoom.oneToOne": "Un pixel d'image par pixel d'écran · et non un millimètre par millimètre, ce qu'aucun navigateur ne peut savoir — utilisez la barre d'échelle pour les dimensions",
+  "ai.action": "Analyze",
+  "ai.title": "Analyze this study",
+  "ai.study": "Study",
+  "ai.model": "Model",
+  "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
+  "ai.submit": "Run analysis",
+  "ai.submitting": "Submitting…",
+  "ai.running": "Running… {state} {step}",
+  "ai.done": "Analysis complete. SEG and SR were stored to the study.",
+  "ai.refresh": "Show results",
+  "ai.failed": "The job ended as {state}."
 }

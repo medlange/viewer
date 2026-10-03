@@ -49,6 +49,12 @@ export const KINDS = Object.freeze({
   PANEL: 'panel',        // a side-panel that renders MedicalOS data
   TOOL: 'tool',          // an interaction mode over a viewport
   OVERLAY: 'overlay',    // something drawn on top of the image
+  // AN ACTION IS A VERB ON THE STUDY SCREEN'S BAR, not an interaction over pixels:
+  // an icon/title plus `onClick(ctx)`, where the shell passes the context the action
+  // cannot reach without importing the shell -- today the open study and a reload.
+  // `src/ui/ai-action.js` is the shipped example; a third-party verb is one module
+  // and one registration, which is what the OHIF-shaped roadmap item (V1) means.
+  ACTION: 'action',
 });
 
 const registries = new Map(Object.values(KINDS).map((k) => [k, new Map()]));

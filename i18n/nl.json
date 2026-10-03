@@ -184,5 +184,16 @@
   "wl.studyDescription": "Onderzoeksbeschrijving",
   "wl.unreachable": "Het archief kon niet worden bereikt.",
   "zoom.fit": "Het hele beeld binnen het paneel, in de eigen verhoudingen",
-  "zoom.oneToOne": "Eén beeldpixel per schermpixel · niet één millimeter per millimeter, wat geen enkele browser kan weten — gebruik de schaalbalk voor de maat"
+  "zoom.oneToOne": "Eén beeldpixel per schermpixel · niet één millimeter per millimeter, wat geen enkele browser kan weten — gebruik de schaalbalk voor de maat",
+  "ai.action": "Analyze",
+  "ai.title": "Analyze this study",
+  "ai.study": "Study",
+  "ai.model": "Model",
+  "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
+  "ai.submit": "Run analysis",
+  "ai.submitting": "Submitting…",
+  "ai.running": "Running… {state} {step}",
+  "ai.done": "Analysis complete. SEG and SR were stored to the study.",
+  "ai.refresh": "Show results",
+  "ai.failed": "The job ended as {state}."
 }

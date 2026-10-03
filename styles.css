@@ -2503,3 +2503,46 @@ body.annot-dragging { cursor: grabbing; }
   unicode-bidi: plaintext;
 }
 .hud-fusion.err { color: var(--bad, #e06666); }
+
+/* Disabled controls read as disabled. The analyze dialog's run button toggles the
+   state across a submit and a refusal, and the architecture gate requires every
+   conditionally-chosen state to LOOK different -- a button that is disabled but
+   renders enabled invites a click whose only answer is silence. */
+button:disabled,
+.ai-run:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The analyze dialog's own spacing; the dialog body host is generic. */
+.ai-dialog .ai-study code {
+  display: block;
+  margin-top: 4px;
+  word-break: break-all;
+  color: var(--ink-2, #c3d2e6);
+}
+.ai-dialog .ai-models {
+  margin: 12px 0;
+  border: 1px solid var(--line, #33465e);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+.ai-dialog .ai-choice {
+  display: block;
+  margin: 4px 0;
+}
+.ai-dialog .ai-status {
+  min-height: 1.4em;
+  color: var(--ink-2, #c3d2e6);
+}
+.ai-dialog .ai-actions {
+  display: flex;
+  gap: 8px;
+}
+.ai-dialog .ai-none {
+  color: var(--warn, #f0a21e);
+}
+.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

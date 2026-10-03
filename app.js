@@ -57,6 +57,9 @@ import './src/ui/segments-panel.js';    // registers the segments panel
 // NO MARKUP IN index.html. It declares its slot and the shell builds its section --
 // which is the whole point: a panel is a registration and an import, not an HTML edit.
 import './src/ui/study-panel.js';       // registers the study panel
+// THE ANALYZE VERB, as an ACTION contribution: rendered on the study bar by the loop
+// below, wired to the dialog in ai-dialog.js. An import is the whole integration.
+import './src/ui/ai-action.js';         // registers the Analyze action
 import { openAbout, openPreferences } from './src/ui/dialogs.js';
 import { startI18n, onLanguageChange, t } from './src/core/i18n.js';
 import { get as getState, set as setState, subscribeTo } from './src/core/state.js';
@@ -3459,6 +3462,28 @@ function buildToolButtons() {
           .replace('{k}', tool.key)
         + (toolHint(tool) ? ` \u2014 ${toolHint(tool)}` : ''),
       onClick: () => armTool(armed && armed.tool.id === tool.id ? null : tool),
+    }));
+  }
+
+  // THE ACTIONS. A verb on the study, not an interaction over pixels: the shell hands
+  // it the open study and the reload, the two things an action cannot reach without
+  // importing the shell. Adding a verb is a registration in a module of its own --
+  // `ai-action.js` is the worked example.
+  for (const action of contributions(KINDS.ACTION)) {
+    el.barVerbs.appendChild(iconButton({
+      id: action.id,
+      glyph: action.icon,
+      fallback: action.title,
+      label: action.title,
+      title: action.title,
+      onClick: () => action.onClick({
+        // `studyUID` IS THE MODULE-LEVEL OPEN STUDY; the protocol key is camelCase.
+        studyUid: studyUID,
+        // RE-OPEN, NOT RELOAD: the page keeps its state client-side, so a browser
+        // reload would drop the reader at the study list; openStudy re-fetches the
+        // series, and the SEG/SR the platform stored arrive as new series.
+        reloadStudy: () => openStudy(studyUID),
+      }),
     }));
   }
 

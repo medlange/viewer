@@ -184,5 +184,16 @@
   "wl.studyDescription": "検査の説明",
   "wl.unreachable": "アーカイブに接続できませんでした。",
   "zoom.fit": "画像全体を元の比率のままパネル内に収める",
-  "zoom.oneToOne": "画像 1 ピクセルを画面 1 ピクセルに対応 · 1 ミリメートル対 1 ミリメートルではなく、それはブラウザには知りようがない — 実寸はスケールバーで確認する"
+  "zoom.oneToOne": "画像 1 ピクセルを画面 1 ピクセルに対応 · 1 ミリメートル対 1 ミリメートルではなく、それはブラウザには知りようがない — 実寸はスケールバーで確認する",
+  "ai.action": "Analyze",
+  "ai.title": "Analyze this study",
+  "ai.study": "Study",
+  "ai.model": "Model",
+  "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
+  "ai.submit": "Run analysis",
+  "ai.submitting": "Submitting…",
+  "ai.running": "Running… {state} {step}",
+  "ai.done": "Analysis complete. SEG and SR were stored to the study.",
+  "ai.refresh": "Show results",
+  "ai.failed": "The job ended as {state}."
 }

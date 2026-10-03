@@ -184,5 +184,16 @@
   "wl.studyDescription": "Mô tả nghiên cứu",
   "wl.unreachable": "Không thể kết nối tới kho lưu trữ.",
   "zoom.fit": "Toàn bộ hình ảnh nằm trong khung, giữ đúng tỷ lệ của nó",
-  "zoom.oneToOne": "Một điểm ảnh của hình trên một điểm ảnh màn hình · không phải một milimét trên một milimét, điều mà không trình duyệt nào biết được — dùng thanh tỷ lệ để xem kích thước"
+  "zoom.oneToOne": "Một điểm ảnh của hình trên một điểm ảnh màn hình · không phải một milimét trên một milimét, điều mà không trình duyệt nào biết được — dùng thanh tỷ lệ để xem kích thước",
+  "ai.action": "Analyze",
+  "ai.title": "Analyze this study",
+  "ai.study": "Study",
+  "ai.model": "Model",
+  "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
+  "ai.submit": "Run analysis",
+  "ai.submitting": "Submitting…",
+  "ai.running": "Running… {state} {step}",
+  "ai.done": "Analysis complete. SEG and SR were stored to the study.",
+  "ai.refresh": "Show results",
+  "ai.failed": "The job ended as {state}."
 }

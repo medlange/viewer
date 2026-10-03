@@ -184,5 +184,16 @@
   "wl.studyDescription": "检查描述",
   "wl.unreachable": "无法连接到归档。",
   "zoom.fit": "整幅图像按其自身比例完整显示在面板内",
-  "zoom.oneToOne": "一个图像像素对应一个屏幕像素 · 并非一毫米对应一毫米，这一点浏览器无从得知——尺寸以比例尺为准"
+  "zoom.oneToOne": "一个图像像素对应一个屏幕像素 · 并非一毫米对应一毫米，这一点浏览器无从得知——尺寸以比例尺为准",
+  "ai.action": "Analyze",
+  "ai.title": "Analyze this study",
+  "ai.study": "Study",
+  "ai.model": "Model",
+  "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
+  "ai.submit": "Run analysis",
+  "ai.submitting": "Submitting…",
+  "ai.running": "Running… {state} {step}",
+  "ai.done": "Analysis complete. SEG and SR were stored to the study.",
+  "ai.refresh": "Show results",
+  "ai.failed": "The job ended as {state}."
 }
