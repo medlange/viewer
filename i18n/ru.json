@@ -189,6 +189,7 @@
   "ai.title": "Анализ исследования",
   "ai.study": "Исследование",
   "ai.model": "Модель",
+  "ai.alsoRuns": "Также запустит",
   "ai.noneConfigured": "Для этого развёртывания не настроены модели. Добавьте список «capabilities» в viewer-config.js.",
   "ai.submit": "Запустить анализ",
   "ai.submitting": "Отправка…",

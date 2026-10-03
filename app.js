@@ -74,6 +74,12 @@ import {
 } from './src/ui/export.js';
 import { recall, remember } from './src/core/session-store.js';
 import { initRails, movePanel, railOf, toggleRail } from './src/ui/rails.js';
+// THE PRESENTATION CONFIGURATION (V2): branding, theme, panel enablement, deep links.
+// Loaded beside presets/protocols at boot; a host replaces viewer.config.json by mounting
+// over it, the same mechanism as viewer-config.js. The JS seam still wins for productName.
+import {
+  loadViewerConfig, applyViewerConfig, disabledPanels, deepLinkStudyEnabled,
+} from './src/core/config.js';
 
 
 /* ----------------------------------------------------------------------------------
@@ -3482,7 +3488,15 @@ function buildToolButtons() {
         // RE-OPEN, NOT RELOAD: the page keeps its state client-side, so a browser
         // reload would drop the reader at the study list; openStudy re-fetches the
         // series, and the SEG/SR the platform stored arrive as new series.
-        reloadStudy: () => openStudy(studyUID),
+        //
+        // THE CACHE GOES FIRST. `openStudy` reuses `seriesByStudy` when a ready entry
+        // exists, and the entry this study earned on the way in predates the analysis:
+        // the SEG/SR the job just stored are not in it. Measured 2026-10-03 -- the
+        // dialog reported "Analysis complete", the re-open rendered the same two CT
+        // series, and the segments panel said "none on this panel" while the archive
+        // already held the SEG. Dropping the one entry forces exactly one refetch;
+        // the worklist's expansion cache for OTHER studies is untouched.
+        reloadStudy: () => { seriesByStudy.delete(studyUID); return openStudy(studyUID); },
       }),
     }));
   }
@@ -4524,10 +4538,20 @@ function mountPanels() {
   // property of the panel rather than of where someone happened to paste its markup.
   const declared = [...contributions(KINDS.PANEL)]
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+  const off = disabledPanels();
 
   for (const panel of declared) {
     if (typeof panel.mount !== 'function') continue;
     let section = document.querySelector(`[data-panel-id="${panel.id}"]`);
+    // A DEPLOYMENT CAN TURN A PANEL OFF, and "off" means absent, not empty: the section
+    // (heading, empty state, tab stops) is removed from the rail entirely. Registration
+    // is untouched -- a host that disables a panel has not un-installed it, and a later
+    // config without the entry mounts it again. Measured necessity: an empty section of
+    // a disabled panel still costs a fold button and a screen-reader stop.
+    if (off.has(panel.id)) {
+      if (section) section.remove();
+      continue;
+    }
     // A SECTION IN THE MARKUP WINS. The two shipped panels carry one so their empty
     // states are on screen before the first subscription fires, and a deployment that
     // laid out its rails by hand should not have that undone by a default.
@@ -4558,9 +4582,12 @@ function mountPanels() {
   makeSectionsFoldable();
 }
 
-// IN PARALLEL: two independent configuration files, and the page is not usable until both
-// have either arrived or failed. Sequencing them would cost a round trip for nothing.
-await Promise.all([loadPresets(), loadProtocols()]);
+// IN PARALLEL: the independent configuration files, and the page is not usable until all
+// have either arrived or failed. Sequencing them would cost round trips for nothing.
+// viewer.config rides the same batch: it cannot delay the first paint (a missing file is
+// defaults, not an error), and the branding it carries lands before mountPanels runs below.
+await Promise.all([loadPresets(), loadProtocols(), loadViewerConfig()]);
+applyViewerConfig(document, CONFIG);
 buildPresets();
 buildLayoutButtons();
 buildLinkButtons();
@@ -5068,3 +5095,14 @@ subscribeTo(['measurements'], () => {
 });
 mountPanels();
 showStudies();
+
+// DEEP LINK: ?study=<uid> opens the case straight from the URL. This is how an external
+// worklist (or a message from the bus, rendered as a link) hands a reader into a study
+// without the worklist round trip, and why it is config-gated rather than always on: a
+// deployment that must never open unvetted links (a kiosk, a shared review wall) turns
+// `routing.deepLinkStudy` off and the parameter below is ignored like any other unknown
+// query key. The check runs at boot; openStudy does its own series fetch and refusals.
+const deepLinkedStudy = new URLSearchParams(location.search).get('study');
+if (deepLinkedStudy && deepLinkStudyEnabled()) {
+  openStudy(deepLinkedStudy);
+}

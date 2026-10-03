@@ -189,6 +189,7 @@
   "ai.title": "Analyze this study",
   "ai.study": "Study",
   "ai.model": "Model",
+  "ai.alsoRuns": "Also runs",
   "ai.noneConfigured": "No capabilities are configured for this deployment. Add a \"capabilities\" list to viewer-config.js.",
   "ai.submit": "Run analysis",
   "ai.submitting": "Submitting…",

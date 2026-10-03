@@ -40,23 +40,52 @@ def test_the_analyze_verb_registers_as_an_action() -> None:
 def test_the_dialog_posts_contract_section_9s_body_and_nothing_else() -> None:
     """MOS-SAFE-089a: one job-creation path, the button's exact request."""
     assert re.search(
-        r"JSON\.stringify\(\{\s*study_instance_uid:\s*studyUid,\s*"
-        r"capabilities:\s*\[capability\]\s*\}\)",
+        r"JSON\.stringify\(\{\s*study_instance_uid:\s*studyUid,\s*capabilities\s*\}\)",
         DIALOG,
     ), (
-        "the analyze dialog must POST exactly {study_instance_uid, capabilities:[one]} "
-        "-- CONTRACT.md §9's shape, the same body the MedicalOS panel sends. A second "
+        "the analyze dialog must POST exactly {study_instance_uid, capabilities} -- "
+        "CONTRACT.md §9's shape, the same body the MedicalOS panel sends. A second "
         "job-creation shape is a second path, and MOS-SAFE-089a forbids it."
     )
     assert "`${apiRoot}/jobs`" in DIALOG, "the request goes to /api/v1/jobs"
 
 
-def test_the_model_list_is_configuration_not_discovery() -> None:
-    """MOS-UI-366: the offered list is the configured list; the platform has no
-    GET /capabilities route, so a dialog that 'fetches the models' would 404."""
+def test_the_selection_is_submitted_as_a_dependency_closure() -> None:
+    """`emphysema_laa` needs `lung_segmentation` in the SAME job (CONTRACT.md §7).
+
+    Measured 2026-10-03: submitting the lone selection made every `emphysema_laa`
+    run FAIL with `capability_resolution_failed`. The wire body is the closure, not
+    the selection.
+    """
+    assert "function closureFor(" in DIALOG, (
+        "the dialog must compute the transitive depends_on closure of the selection"
+    )
+    assert re.search(
+        r"capabilities:\s*closureFor\(capability,\s*depsById\)", DIALOG,
+    ), "the POST body is the closure of the selected capability"
+    assert "out.add(id)" in DIALOG and "depsById.get(id)" in DIALOG, (
+        "the closure walks depends_on transitively and is cycle-safe"
+    )
+
+
+def test_the_model_list_is_configured_and_the_edges_are_platform_data() -> None:
+    """MOS-UI-366 fixed the offered list as the configured list when the platform
+    had no route to read; the route exists now (`GET /api/v1/capabilities`). The
+    list stays configured -- a deployment whitelists what its readers may run --
+    but `depends_on` edges are platform data and MUST NOT be duplicated into
+    viewer-config.js, where they would rot."""
     assert "cfg.capabilities" in DIALOG, (
         "the dialog must read window.VIEWER_CONFIG.capabilities -- the deployment's "
         "configured list -- and render the unconfigured state when it is absent"
+    )
+    assert "loadCapabilityDescriptors" in DIALOG
+    assert "`${apiRoot}/capabilities`" in DIALOG, (
+        "the dependency edges are read from the platform's GET /api/v1/capabilities"
+    )
+    assert re.search(r"if \(!response\.ok\) return null;", DIALOG), (
+        "a platform without the route (or a proxy hiding it) must degrade to empty "
+        "edges -- the pre-route behaviour -- not render an error the reader cannot "
+        "act on"
     )
     assert "ai.noneConfigured" in DIALOG
 
@@ -91,7 +120,8 @@ def test_the_shell_hands_the_action_its_context() -> None:
 
 def test_every_ai_string_exists_in_every_language() -> None:
     keys = [
-        "ai.action", "ai.title", "ai.study", "ai.model", "ai.noneConfigured",
+        "ai.action", "ai.title", "ai.study", "ai.model", "ai.alsoRuns",
+        "ai.noneConfigured",
         "ai.submit", "ai.submitting", "ai.running", "ai.done", "ai.refresh",
         "ai.failed",
     ]
