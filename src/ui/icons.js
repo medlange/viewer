@@ -63,6 +63,12 @@ export const ICONS = Object.freeze({
     + '<path d="M11.8 8a3.6 3.6 0 010 5.1l-1.9 1.9a3.6 3.6 0 01-5.1-5.1l1-1"/>',
   overlay: '<rect x="3.2" y="3.2" width="13.6" height="13.6" rx="1.5"/>'
     + '<path d="M6.6 10.4l2.6 2.6 4.4-6"/>',
+  // TWO OFFSET RECTANGLES, THE BACK ONE'S TOP-LEFT PEEKING OUT: the layers metaphor for
+  // laying one acquisition over another. Distinct from 'overlay' (a checkmark on one
+  // rect) because the two buttons sat side by side with the SAME glyph, and a reader
+  // could not tell the segmentation toggle from the fusion one without hovering both.
+  fusion: '<rect x="6" y="6" width="10.4" height="10.4" rx="1.5"/>'
+    + '<path d="M3.6 13.6V5.4a1.5 1.5 0 011.5-1.5h8.2"/>',
   invert: '<circle cx="10" cy="10" r="6.8"/>'
     + '<path d="M10 3.2a6.8 6.8 0 010 13.6z" fill="currentColor" stroke="none"/>',
   cine: '<path d="M6.4 4.6l9 5.4-9 5.4z"/>',

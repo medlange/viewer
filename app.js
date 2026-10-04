@@ -454,7 +454,7 @@ function makePanel(i) {
     <div class="hud scale"><div class="scale-line"></div><span class="scale-mm"></span></div>
     <div class="link-badge" hidden></div>
     <div class="scrollbar"><div class="thumb"></div></div>
-    <div class="empty">click a series</div>`;
+    <div class="empty">${t('panel.empty', 'Open a series from the list')}</div>`;
 
   const canvas = node.querySelector('canvas');
   const panel = {
@@ -2579,7 +2579,7 @@ async function loadSeriesInto(panel, panelIndex, study, seriesUID, row) {
   loadToken++;
   const mine = () => inFlight.get(panel) === controller;
 
-  notice('Loading series…', 'info');
+  notice(t('series.loading', 'Loading series…'), 'info');
   try {
     let painted = 0;
     const { instances, warnings } = await client.retrieveSeries(study, seriesUID, (_i, n, soFar) => {
@@ -3536,22 +3536,31 @@ function buildToolButtons() {
 
   // THE TOGGLES. Each still owns its own handler in `attachGlobalInteraction`; these are
   // the same buttons by id, so nothing below this line had to learn a new name.
-  for (const [id, glyph, name, title] of [
+  //
+  // GROUPED, NOT LISTED. A flat row of seven glyphs reads as one undifferentiated
+  // strip; the groups are the mental model a reader already has: pixel appearance
+  // (invert, segmentation, fusion), motion (cine), the view itself (reset), and the
+  // two exports. `divider()` existed unused since it was written -- measured in the
+  // UX pass of 2026-10-04 as "the toolbar is a wall of icons".
+  let lastGroup = null;
+  for (const [id, glyph, name, title, group] of [
     ['t-invert', 'invert', t('toggle.invert', 'Invert'),
-     t('toggle.invertWhy', 'Invert greyscale (I)')],
+     t('toggle.invertWhy', 'Invert greyscale (I)'), 'pixels'],
     ['t-overlay', 'overlay', t('toggle.overlay', 'Segmentation overlay'),
-     t('toggle.overlayWhy', 'Show or hide the segmentation (O)')],
-    ['t-fusion', 'overlay', t('toggle.fusion', 'Fusion'),
-     t('toggle.fusionWhy', 'Lay a second acquisition over this one (F)')],
+     t('toggle.overlayWhy', 'Show or hide the segmentation (O)'), 'pixels'],
+    ['t-fusion', 'fusion', t('toggle.fusion', 'Series fusion'),
+     t('toggle.fusionWhy', 'Lay a second acquisition over this one (F)'), 'pixels'],
     ['t-cine', 'cine', t('toggle.cine', 'Cine'),
-     t('toggle.cineWhy', 'Cine play (Space)')],
+     t('toggle.cineWhy', 'Cine play (Space)'), 'motion'],
     ['t-reset', 'reset', t('toggle.reset', 'Reset view'),
-     t('toggle.resetWhy', 'Reset zoom, pan and window (double-click)')],
+     t('toggle.resetWhy', 'Reset zoom, pan and window (double-click)'), 'view'],
     ['t-capture', 'capture', t('toggle.capture', 'Capture'),
-     t('toggle.captureWhy', 'Save this panel as a PNG, with its annotations and a caption')],
+     t('toggle.captureWhy', 'Save this panel as a PNG, with its annotations and a caption'), 'out'],
     ['t-csv', 'table', t('toggle.export', 'Export measurements'),
-     t('toggle.exportWhy', 'Save the measurements of this study as CSV, with their provenance')],
+     t('toggle.exportWhy', 'Save the measurements of this study as CSV, with their provenance'), 'out'],
   ]) {
+    if (lastGroup !== null && group !== lastGroup) el.barToggles.appendChild(divider());
+    lastGroup = group;
     const b = iconButton({ glyph, fallback: name, label: name, title });
     b.id = id;
     el.barToggles.appendChild(b);

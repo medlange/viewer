@@ -66,6 +66,7 @@ import {
   PLANES, planeDepth, planeOrdinate, planeNormal, planeStepMm,
 } from './mpr.js';
 import { patientToPixel, pixelToPatient } from './reference.js';
+import { t } from '../core/i18n.js';
 
 /** How two panels are linked. Reported to the caller, never assumed. */
 export const LINK = Object.freeze({
@@ -359,8 +360,9 @@ export function followIndex(source, sourceIndex, sourcePlane, target, targetPlan
       index: null,
       mode: LINK.NONE,
       distanceMm: null,
-      reason: check.reason || `the ${targetPlane} of the other series has no usable step `
-        + 'between its planes, so there is no map from one index to the other',
+      reason: check.reason || t('link.reason.noStep',
+        'the {plane} of the other series has no usable step between its planes, '
+        + 'so there is no map from one index to the other').replace('{plane}', targetPlane),
     };
   }
 
@@ -370,10 +372,12 @@ export function followIndex(source, sourceIndex, sourcePlane, target, targetPlan
     distanceMm: null,
     // No article before the plane name: "a axial slice" is what a template gets you, and a
     // sentence a reader is shown is a sentence that has to read.
-    reason: `${sourcePlane} and ${targetPlane} slices advance along different axes, `
-      + 'so neither one of them is a slice of the other — the reference line shows where '
-      + 'they cross. Align the panels by hand and press Align to link them by the offset you '
-      + 'chose instead.',
+    reason: t('link.reason.differentAxes',
+      '{from} and {to} slices advance along different axes, so neither one of them is a '
+      + 'slice of the other — the reference line shows where they cross. Align the panels '
+      + 'by hand and press "{align}" to link them by the offset you chose instead.')
+      .replace('{from}', sourcePlane).replace('{to}', targetPlane)
+      .replace('{align}', t('link.align', 'Link at offset')),
   };
 }
 
@@ -387,19 +391,29 @@ export function followIndex(source, sourceIndex, sourcePlane, target, targetPlan
 export function describeLink(mode, info = {}) {
   if (mode === LINK.POSITION) {
     const d = info.distanceMm;
-    const off = d > 0.01 ? ` (nearest slice ${d.toFixed(1)} mm away)` : '';
-    return `linked by patient position${off}`;
+    const off = d > 0.01
+      ? t('link.tip.positionOff', ' (nearest slice {d} mm away)')
+        .replace('{d}', d.toFixed(1))
+      : '';
+    return t('link.tip.position', 'linked by patient position{off}')
+      .replace('{off}', off);
   }
   if (mode === LINK.CLAMPED) {
     const d = info.distanceMm;
-    return 'not a slice correspondence: the other series does not reach this position — '
-      + `its nearest slice is ${Number.isFinite(d) ? d.toFixed(1) : '?'} mm away, and that `
-      + 'panel is parked at the end of what it covers';
+    return t('link.tip.clamped',
+      'not a slice correspondence: the other series does not reach this position — '
+      + 'its nearest slice is {d} mm away, and that panel is parked at the end of what '
+      + 'it covers')
+      .replace('{d}', Number.isFinite(d) ? d.toFixed(1) : '?');
   }
   if (mode === LINK.OFFSET) {
-    return 'linked by an offset you set — the platform did not verify this correspondence';
+    return t('link.tip.offset',
+      'linked by an offset you set — the platform did not verify this correspondence');
   }
-  if (mode === LINK.NONE) return `not linked: ${info.reason || 'no comparable geometry'}`;
+  if (mode === LINK.NONE) {
+    return t('link.tip.none', 'not linked: {reason}')
+      .replace('{reason}', info.reason || t('link.reason.generic', 'no comparable geometry'));
+  }
   return '';
 }
 
@@ -431,10 +445,19 @@ export const ABSENT = Object.freeze({
 });
 
 export function linkBadge(mode) {
-  if (mode === LINK.POSITION) return { text: 'position-linked', kind: 'exact' };
-  if (mode === LINK.CLAMPED) return { text: 'past the other series', kind: 'weak' };
-  if (mode === LINK.OFFSET) return { text: 'offset-linked', kind: 'weak' };
-  if (mode === LINK.NONE) return { text: 'not linked', kind: 'none' };
+  // THE BADGE IS ALWAYS ON SCREEN, so it rides the locale; the tooltip underneath it
+  // (describeLink) rides it too. Before this the pair sat in English on a Russian
+  // surface — measured in the UX pass of 2026-10-04.
+  if (mode === LINK.POSITION) {
+    return { text: t('link.badge.position', 'position-linked'), kind: 'exact' };
+  }
+  if (mode === LINK.CLAMPED) {
+    return { text: t('link.badge.clamped', 'past the other series'), kind: 'weak' };
+  }
+  if (mode === LINK.OFFSET) {
+    return { text: t('link.badge.offset', 'offset-linked'), kind: 'weak' };
+  }
+  if (mode === LINK.NONE) return { text: t('link.badge.none', 'not linked'), kind: 'none' };
   return null;
 }
 

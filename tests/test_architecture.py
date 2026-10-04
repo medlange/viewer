@@ -6977,9 +6977,11 @@ def test_a_clamp_to_the_end_of_a_series_is_not_reported_as_a_correspondence() ->
     )
 
     # AND THE BADGE, which is the whole point: the tooltip always carried the distance.
+    # The badge text rides the locale since the UX pass of 2026-10-04, so the shape is
+    # `t(...)` rather than a literal — what is pinned is the KIND, which is the claim.
     badge = code[code.index("export function linkBadge("):]
-    badge = badge[: badge.index("\n}")]
-    assert re.search(r"LINK\.CLAMPED\) return \{ text: '[^']+', kind: 'weak' \}", badge), (
+    badge = badge[: badge.index("\n  return null;")]
+    assert re.search(r"LINK\.CLAMPED\)[\s\S]*?kind: 'weak' \}", badge), (
         "the clamp is badged with the same `exact` chip as a true correspondence, so the "
         "one thing the reader actually sees still overstates it"
     )
