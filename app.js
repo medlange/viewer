@@ -2632,6 +2632,10 @@ async function loadSeriesInto(panel, panelIndex, study, seriesUID, row) {
     panel._anchor = null;   // a new series invalidates the reader's assertion
     panel.viewport.setWindow(stack.defaultWindow.center, stack.defaultWindow.width);
     panel.viewport.setOverlay(null);
+    // THE SEG THAT WENT WITH THE OLD STACK IS NOT THE SEG FOR THE NEW ONE. The study's
+    // label maps are cached (see studySegInstances); re-attach before the first draw of
+    // the new series, or the overlay toggle silently has nothing to show.
+    attachSegsToPanel(study, panel);
 
     // THE SERIES, AND NOT THE PATIENT AGAIN. This label carried the patient's name on a
     // second line, in every panel: four identical copies in a 2x2, because this viewer
@@ -2694,11 +2698,36 @@ async function loadSeriesInto(panel, panelIndex, study, seriesUID, row) {
   }
 }
 
+// THE STUDY'S SEG INSTANCES, kept parsed for the life of the page. `loadDerived` runs
+// once per open, but `loadSeriesInto` runs on every series a reader clicks -- and it
+// nulls `panel.seg` with the old stack (the SEG is a fact about a PAIR: label map and
+// source grid). Without the cache the segmentation toggle went dead after any series
+// change: alpha flipped, `p.seg` stayed null, nothing drew. Measured 2026-10-04.
+const studySegInstances = new Map();
+
+/** Attach the study's cached SEG to ONE panel whose new stack it aligns to. Mirrors
+ *  `loadDerived`'s placement rule (first label map that fits wins; MOS-IMG-066 defines
+ *  no ordering across two). Returns true when something was attached. */
+function attachSegsToPanel(study, panel) {
+  const instances = studySegInstances.get(study);
+  if (!instances || !panel.stack) return false;
+  for (const inst of instances) {
+    try {
+      const decoded = decodeSegmentation(inst, panel.stack);
+      if (!decoded.planes.size) continue;
+      panel.seg = decoded;
+      return true;
+    } catch (e) { /* geometry mismatch: this SEG is not for this stack */ }
+  }
+  return false;
+}
+
 /** Every SEG and SR in the study, layered onto whichever panel its geometry actually fits. */
 async function loadDerived(study, series, token) {
   for (const s of series.filter((x) => dv(x, '00080060') === 'SEG')) {
     try {
       const { instances } = await client.retrieveSeries(study, dv(s, '0020000E'));
+      studySegInstances.set(study, instances);
       for (const inst of instances) {
         // Attached to every panel whose stack the SEG ALIGNS TO, decided by seg.js, not by
         // assuming it belongs to the active one. A SEG matching nothing is reported.
