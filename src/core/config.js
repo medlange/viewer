@@ -31,7 +31,7 @@
 /** The schema's defaults, also the answer when the file is absent or unreadable. */
 export const DEFAULT_VIEWER_CONFIG = Object.freeze({
   version: 1,
-  branding: Object.freeze({ productName: null, logoGlyph: null }),
+  branding: Object.freeze({ productName: null, logoGlyph: null, logo: null }),
   theme: Object.freeze({}),
   panels: Object.freeze({ disabled: Object.freeze([]) }),
   routing: Object.freeze({ deepLinkStudy: true }),
@@ -76,7 +76,7 @@ function normalise(raw) {
 
   const branding = { ...DEFAULT_VIEWER_CONFIG.branding, ...(raw.branding || {}) };
   for (const key of Object.keys(raw.branding || {})) {
-    if (!['productName', 'logoGlyph'].includes(key)) warn(`branding.${key}`);
+    if (!['productName', 'logoGlyph', 'logo'].includes(key)) warn(`branding.${key}`);
     if (branding[key] != null && typeof branding[key] !== 'string') branding[key] = null;
   }
 
@@ -148,7 +148,18 @@ export function applyViewerConfig(doc, viewerConfigJs) {
     if (h1) h1.textContent = String(name);
   }
   const mark = doc.getElementById('brand-mark');
-  if (mark && branding.logoGlyph) mark.textContent = branding.logoGlyph;
+  if (mark && branding.logo) {
+    // THE BRAND MARK IS AN IMAGE when the deployment names one -- the Medlange ribbon,
+    // not a glyph a font happens to have. On error the glyph below stays, so a wrong
+    // path degrades to the text mark instead of a broken-image icon.
+    const img = doc.createElement('img');
+    img.src = branding.logo;
+    img.alt = '';
+    img.className = 'brand-mark-img';
+    img.onerror = () => { img.remove(); if (branding.logoGlyph) mark.textContent = branding.logoGlyph; };
+    mark.textContent = '';
+    mark.appendChild(img);
+  } else if (mark && branding.logoGlyph) mark.textContent = branding.logoGlyph;
 
   const root = doc.documentElement;
   for (const [varName, value] of Object.entries(held.theme)) {
