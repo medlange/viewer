@@ -218,5 +218,6 @@
   "ai.rejected": "Анализ отклонён: {why}",
   "hud.slab": "{mode} на {mm} мм ({n} срезов, центр {i} / {depth})",
   "proj.max": "максимум",
-  "proj.min": "минимум"
+  "proj.min": "минимум",
+  "chrome.back": "Исследования"
 }

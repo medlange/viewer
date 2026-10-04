@@ -4916,6 +4916,11 @@ onLanguageChange((lang) => {
   // built with until the next language change -- which is one change too late.
   dressDateFields(lang);
   paintChrome();
+  // AND THE CANVASES. The HUD writes strings into itself -- the link badge, the slab
+  // caption -- and nothing redrew it on a language change, so a badge kept the language
+  // it was drawn in while the chrome around it moved on. Measured 2026-10-04: a French
+  // surface carrying a `по положению` badge.
+  drawAll();
   // AND ANYTHING THE SHELL BUILT AS A STRING. `paintChrome` only reaches nodes carrying
   // `data-i18n`, which the study list's rows and its count are not -- they are written by
   // `renderWorklist`. Without this the count kept the language it was first drawn in, so

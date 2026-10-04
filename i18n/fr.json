@@ -218,5 +218,6 @@
   "ai.rejected": "Analysis refused: {why}",
   "hud.slab": "{mode} over {mm} mm ({n} slices, centred {i} / {depth})",
   "proj.max": "maximum",
-  "proj.min": "minimum"
+  "proj.min": "minimum",
+  "chrome.back": "Examens"
 }
