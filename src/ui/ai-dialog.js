@@ -238,6 +238,17 @@ export function openAnalyzeDialog({ studyUid, onDone, fetchImpl } = {}) {
                 'Analysis complete. SEG and SR were stored to the study.');
               refresh.hidden = false;
               refresh.focus();
+            } else if (job.state === 'REJECTED' && job.rejection) {
+              // A REJECTED job IS an answer, not an error (MOS-API-047): the platform
+              // examined the study and refused with the reason -- "this model serves CT
+              // and the study is MR", "the mask spans the scan extent". Rendering only
+              // the state ("REJECTED") made readers think the platform broke; the
+              // reason is the reader's answer. Measured 2026-10-04.
+              const why = job.rejection.detail || job.rejection.title
+                || job.rejection.code || '';
+              status.textContent = t('ai.rejected', 'Analysis refused: {why}')
+                .replace('{why}', why);
+              run.disabled = false;
             } else {
               status.textContent = t('ai.failed', 'The job ended as {state}.')
                 .replace('{state}', job.state);

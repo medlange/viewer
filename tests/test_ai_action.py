@@ -100,6 +100,15 @@ def test_a_refused_submit_renders_the_problem_and_recovers() -> None:
     assert "String(err.message || err)" in DIALOG
 
 
+def test_a_rejected_job_renders_the_platforms_reason() -> None:
+    """MOS-API-047: REJECTED is an answer with the reason attached. Rendering the bare
+    state made readers file it as a platform failure; the rejection document is the
+    reader's answer ("this model serves CT; the study is MR"). Measured 2026-10-04."""
+    assert "job.state === 'REJECTED' && job.rejection" in DIALOG
+    assert "job.rejection.detail || job.rejection.title" in DIALOG
+    assert "ai.rejected" in DIALOG
+
+
 def test_only_a_completed_run_reloads_the_study() -> None:
     assert "if (job.state === 'COMPLETED')" in DIALOG, (
         "the reload callback fires only on COMPLETED; FAILED/REJECTED/CANCELLED "
@@ -123,7 +132,7 @@ def test_every_ai_string_exists_in_every_language() -> None:
         "ai.action", "ai.title", "ai.study", "ai.model", "ai.alsoRuns",
         "ai.noneConfigured",
         "ai.submit", "ai.submitting", "ai.running", "ai.done", "ai.refresh",
-        "ai.failed",
+        "ai.failed", "ai.rejected",
     ]
     locales = sorted((ROOT / "i18n").glob("*.json"))
     assert len(locales) >= 10, "the locale set shrank; is that a deletion?"

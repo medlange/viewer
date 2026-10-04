@@ -1,6 +1,6 @@
 # Medlange Viewer
 
-Part of the [Medlange](../README.md) umbrella: a DICOMweb study viewer. It runs in a
+Part of the [Medlange](https://github.com/medlange) umbrella: a DICOMweb study viewer. It runs in a
 browser, reads DICOM over
 [PS3.18](https://dicom.nema.org/medical/dicom/current/output/html/part18.html) QIDO-RS and
 WADO-RS, and renders CT, MR and PT with WebGL2.
@@ -21,7 +21,7 @@ python -m http.server 8080 --directory viewer
 There is **no build step, no bundler, no package manager and no runtime dependency**.
 `index.html` loads ES modules directly from `src/`; 48 files, ~20 000 lines, all of them
 in this tree. Nothing is fetched at run time from anywhere but the origin it is configured
-against. The reasoning is recorded in `../docs/adr/BUILD_VS_ADOPT.md`: a dependency
+against. The reasoning is recorded in `https://github.com/medlange/core/blob/main/docs/adr/BUILD_VS_ADOPT.md`: a dependency
 delivered into a medical device's UI is a SOUP element under IEC 62304 §8.1.2 whose
 characterisation cost scales with what it *ships*, not with what is *used*.
 
@@ -46,7 +46,7 @@ window.VIEWER_CONFIG = {
 
 A host overrides by **replacing this file** — a bind mount, a build step, a handler that
 serves different bytes at this path. It does not edit it.
-`../medos/deploy/compose/viewer-config.js` is that file for this repository's own deployment.
+`https://github.com/medlange/core/blob/main/medos/deploy/compose/viewer-config.js` is that file for this repository's own deployment.
 Nothing under `src/` reads anything but `window.VIEWER_CONFIG`.
 
 ## What it does not know
@@ -97,7 +97,7 @@ machinery lives.
 whose own suite reaches into a deployment is a viewer that knows its host, which is the
 coupling this separation exists to remove. The mirror halves — that *this* deployment
 mounts a configuration over `viewer-config.js`, and substitutes the MOS-SAFE-001 sentence
-into the response body — are asserted in `../tests/unit/test_viewer_deployment.py`. The
+into the response body — are asserted in `https://github.com/medlange/core/blob/main/tests/unit/test_viewer_deployment.py`. The
 direction is one-way: the platform may read the viewer, the viewer may not read the
 platform.
 

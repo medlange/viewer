@@ -214,5 +214,9 @@
   "link.tip.none": "not linked: {reason}",
   "link.reason.generic": "no comparable geometry",
   "link.reason.noStep": "the {plane} of the other series has no usable step between its planes, so there is no map from one index to the other",
-  "link.reason.differentAxes": "{from} and {to} slices advance along different axes, so neither one of them is a slice of the other — the reference line shows where they cross. Align the panels by hand and press “{align}” to link them by the offset you chose instead."
+  "link.reason.differentAxes": "{from} and {to} slices advance along different axes, so neither one of them is a slice of the other — the reference line shows where they cross. Align the panels by hand and press “{align}” to link them by the offset you chose instead.",
+  "ai.rejected": "Analysis refused: {why}",
+  "hud.slab": "{mode} over {mm} mm ({n} slices, centred {i} / {depth})",
+  "proj.max": "maximum",
+  "proj.min": "minimum"
 }

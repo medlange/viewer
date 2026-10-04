@@ -893,8 +893,16 @@ function draw(p) {
   const word = planeWording(p.stack, p.plane);
   const planeWord = word ? `${word}  ` : '';
   p.hud.br.textContent = frame.projection
-    ? `${planeWord}${frame.projection.mode} over ${frame.projection.mm.toFixed(1)} mm `
-      + `(${frame.projection.slices} slices, centred ${p.index + 1} / ${depth})`
+    // THE SLAB CAPTION RIDES THE LOCALE like every other HUD line; 'maximum over…'
+    // was the last hardcoded English on a Russian surface (UX pass 2026-10-04).
+    ? `${planeWord}${t('hud.slab',
+        '{mode} over {mm} mm ({n} slices, centred {i} / {depth})')
+        .replace('{mode}', t(frame.projection.mode === 'maximum'
+          ? 'proj.max' : 'proj.min', frame.projection.mode))
+        .replace('{mm}', frame.projection.mm.toFixed(1))
+        .replace('{n}', String(frame.projection.slices))
+        .replace('{i}', String(p.index + 1))
+        .replace('{depth}', String(depth))}`
       + `${overlayNote}${resolved}   ·   ${Math.round(p.viewport.zoom * 100)}%`
     : `${planeWord}${p.index + 1} / ${depth}   ·   ${stepText}${resolved}   ·   ${Math.round(p.viewport.zoom * 100)}%`;
   // And a standing marker, because the bottom-right line is where a reader looks for the
