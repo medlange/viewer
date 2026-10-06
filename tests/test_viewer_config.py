@@ -61,7 +61,11 @@ def test_a_missing_or_broken_config_is_defaults_not_a_refusal() -> None:
     escapes the loader — which is the catch arm assigning the defaults."""
     assert "DEFAULT_VIEWER_CONFIG" in CONFIG_JS
     assert "console.warn" in CONFIG_JS
-    assert re.search(r"try \{[\s\S]*?throw new Error\(String\(res\.status\)\);[\s\S]*?\} catch \(err\) \{[\s\S]*?held = DEFAULT_VIEWER_CONFIG;", CONFIG_JS), (
+    assert re.search(
+        r"try \{[\s\S]*?throw new Error\(String\(res\.status\)\);[\s\S]*?"
+        r"\} catch \(err\) \{[\s\S]*?held = DEFAULT_VIEWER_CONFIG;",
+        CONFIG_JS,
+    ), (
         "a failed fetch must reach the catch, and the catch must restore the defaults"
     )
 

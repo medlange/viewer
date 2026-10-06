@@ -564,8 +564,15 @@ def test_every_registered_contribution_module_is_imported_by_the_shell() -> None
     imported it, so `contributions(KINDS.PANEL)` never yielded it and the slot was never
     filled -- the static "none loaded" markup stayed on screen for the whole of its life.
 
-    MOS-REL-108 is what makes this checkable: because the only way to register is a
-    top-level import, the complete set of live contributions IS the import list.
+    THERE ARE NOW TWO REGISTRATION PATHS, and this gate covers the first one. Shipped
+    modules register by being imported at the top of `app.js` -- because the ONLY way
+    an in-tree module registers is that import, the complete set of shipped
+    contributions IS the import list. The second path is the host-plugin manifest:
+    modules named in `viewer-config.js` `plugins` are dynamic-imported by
+    `src/core/plugins.js` (the tree's one designated loader, gated in
+    `tests/test_plugins.py`), which is how a deployment adds a contribution WITHOUT
+    editing the shell. This assertion still scans only `src/` -- the manifest path
+    deliberately lives outside it.
     """
     shell = (VIEWER / "app.js").read_text(encoding="utf-8")
     imported = set(

@@ -50,7 +50,7 @@ import { resolutionNote, withUnit } from './src/image/units.js';
 import { studyDate } from './src/dicom/dates.js';
 import { edgeLetters, screenEdges } from './src/image/orientation.js';
 import { AnnotationLayer } from './src/render/annotations.js';
-import { KINDS, contributions } from './src/core/registry.js';
+import { KINDS, contributions, register } from './src/core/registry.js';
 import './src/tools/measure-tools.js';   // registers the caliper and the ROI
 import './src/ui/measurements-panel.js'; // registers the measurements panel
 import './src/ui/segments-panel.js';    // registers the segments panel
@@ -62,7 +62,7 @@ import './src/ui/study-panel.js';       // registers the study panel
 import './src/ui/ai-action.js';         // registers the Analyze action
 import { openAbout, openPreferences } from './src/ui/dialogs.js';
 import { startI18n, onLanguageChange, t } from './src/core/i18n.js';
-import { get as getState, set as setState, subscribeTo } from './src/core/state.js';
+import { get as getState, set as setState, subscribe, subscribeTo } from './src/core/state.js';
 import { icon } from './src/ui/icons.js';
 import { remeasure } from './src/image/measure.js';
 import { pixelAt } from './src/render/transform.js';
@@ -84,6 +84,11 @@ import {
 // DICOMweb root every read uses. An import plus one bindUpload call is the whole
 // integration, the same shape as the analyze action.
 import { bindUpload } from './src/ui/upload.js';
+// THE MANIFEST LOADER -- the "no edit to the shell" seam: dynamic-imports the modules a
+// host names in viewer-config.js `plugins`. core/plugins.js is the tree's ONE designated
+// dynamic-import site; the registry itself stays pure and static (registry.js's header,
+// MOS-REL-108).
+import { loadPlugins } from './src/core/plugins.js';
 
 
 /* ----------------------------------------------------------------------------------
@@ -116,9 +121,23 @@ function dicomWebRoot() {
 
 const client = new DicomWebClient({
   root: dicomWebRoot(),
+  // THE HOST'S CREDENTIAL, IF IT NAMED ONE. viewer-config.js is a classic script, so a
+  // host CAN put a closure here -- re-read per request, never stored, the same contract
+  // the client's own default keeps. A static deployment names `authToken` instead and
+  // the provider below turns it into a Bearer header. Absent both, the provider answers
+  // null and NO Authorization header is sent -- which is exactly what a
+  // credentials-by-proxy deployment (nginx injecting the token server-side) wants.
+  authHeaderProvider: typeof CONFIG.authHeaderProvider === 'function'
+    ? CONFIG.authHeaderProvider
+    : () => (CONFIG.authToken ? `Bearer ${CONFIG.authToken}` : null),
   surfaceHeader: CONFIG.surfaceHeader,
   surface: CONFIG.surface,
 });
+
+// THE STATE SEAM contributions receive: core/state.js is the one store, and this
+// read-only facade is the shape handed to manifest plugins (through loadPlugins) and to
+// registered overlays at draw time -- neither needs the shell to watch the study change.
+const state = { get: getState, subscribe, subscribeTo };
 
 /**
  * A HOST'S NAME FOR THIS SURFACE, if it has given one.
@@ -1001,6 +1020,16 @@ function draw(p) {
       selectedId(),
       crosshairFor(p, frame),
     );
+    // REGISTERED OVERLAYS DRAW LAST, on top of the annotation layer -- the OVERLAY
+    // kind's one consumer (registry.js names these two sites). An overlay that throws
+    // is logged by id and skipped: decoration must never take the picture down with it.
+    for (const overlay of contributions(KINDS.OVERLAY)) {
+      try {
+        overlay.draw({ panel: p, annotations: p.annotations, state });
+      } catch (err) {
+        console.error(`[medlange-viewer] overlay ${overlay.id} threw during draw`, err);
+      }
+    }
   }
 
   // The footer describes what is ON SCREEN, so it is written by the draw that produced it
@@ -1219,6 +1248,16 @@ function drawOverlays(p) {
     selectedId(),
     crosshairFor(p, p.frame),
   );
+  // THE SECOND OVERLAY DRAW SITE (the first is draw's): measurement and selection
+  // changes redraw the annotations without redrawing the image, and registered
+  // overlays ride the same pass, after the layer, under the same per-overlay guard.
+  for (const overlay of contributions(KINDS.OVERLAY)) {
+    try {
+      overlay.draw({ panel: p, annotations: p.annotations, state });
+    } catch (err) {
+      console.error(`[medlange-viewer] overlay ${overlay.id} threw during draw`, err);
+    }
+  }
 }
 
 function setIndex(source, index, propagate = true) {
@@ -2182,6 +2221,11 @@ async function openStudy(uid, { focusSeries = null } = {}) {
   }
   studyUID = uid;
   worklistSeen = uid;
+  // AND INTO STATE, the copy manifest plugins read through api.context and the study
+  // panel pattern reads directly -- the module variable alone is a thing no
+  // contribution can reach. Not cleared on the way back to the worklist, matching the
+  // variable's own semantics: it names the study the shell has open.
+  setState({ studyUID: uid }, 'open-study');
 
   // AND WHAT THIS STUDY HAD LAST TIME. Recalled AFTER the clear above and keyed by this
   // study's own UID, which the stored record repeats -- so a key edited by hand cannot put
@@ -5155,6 +5199,20 @@ subscribeTo(['measurements'], () => {
     byStudy.get(uid).push(m);
   }
   for (const [uid, held] of byStudy) remember(uid, held);
+});
+// THE MANIFEST, LOADED WITHOUT BLOCKING THE BOOT. A dead plugin URL must not stand
+// between the reader and the worklist, so this is fire-and-forget: loadPlugins isolates
+// every failure, logs a summary, and the shell below does not wait on it. The order
+// consequence is stated in docs/extensions.md: an OVERLAY draws from the next render,
+// TOOL/ACTION buttons appear at the next toolbar rebuild, a plugin PANEL mounts the
+// next time the shell mounts panels. A deployment that needs a first-paint panel ships
+// it as a module the shell imports, the way every shipped contribution above arrives.
+loadPlugins({
+  config: CONFIG,
+  client,
+  registerContribution: register,
+  state,
+  notice,
 });
 mountPanels();
 showStudies();

@@ -34,7 +34,12 @@
  * is that a reviewer can read the complete set of executable contributions with `grep
  * import`, and that property is worth exactly as much in a clinician-facing surface as in a
  * worker. So `register()` takes an object a module already imported. There is no URL
- * loader, no `import()` over a configuration string, and no manifest fetch.
+ * loader, no `import()` over a configuration string, and no manifest fetch IN THIS FILE.
+ * The one deliberate exception -- the host-plugin manifest loader -- lives in
+ * `core/plugins.js`, the single designated dynamic-import site, named in
+ * docs/extensions.md so a reviewer auditing "what code can this surface run" knows where
+ * to look; `viewer/tests/test_plugins.py` gates that no second one appears under src/.
+ * The registry itself stays pure and static either way.
  *
  * Spec: MOS-REL-108, MOS-CONF-109, MOS-UI-009a (MOS-UI-009 withdrawn at specification
  * 0.3.0; what this surface is now held to is
@@ -48,6 +53,9 @@ export const KINDS = Object.freeze({
   // adding a panel is a registration and not an edit to index.html.
   PANEL: 'panel',        // a side-panel that renders MedicalOS data
   TOOL: 'tool',          // an interaction mode over a viewport
+  // DRAWN AFTER THE ANNOTATION LAYER at the two draw sites in app.js (`draw` and
+  // `drawOverlays`); those loops are this kind's only consumer. Contract and the
+  // example: docs/extensions.md, examples/hello-plugin.js.
   OVERLAY: 'overlay',    // something drawn on top of the image
   // AN ACTION IS A VERB ON THE STUDY SCREEN'S BAR, not an interaction over pixels:
   // an icon/title plus `onClick(ctx)`, where the shell passes the context the action

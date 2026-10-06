@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "branding": { "productName": null, "logoGlyph": "◈", "logo": "assets/medlange-mark.png" },
+  "branding": { "productName": null, "logoGlyph": "◈" },
   "theme": {},
   "panels": { "disabled": [] },
   "routing": { "deepLinkStudy": true }

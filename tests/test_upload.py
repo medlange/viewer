@@ -54,7 +54,9 @@ def test_a_partial_store_is_reported_not_swallowed() -> None:
 
 
 def test_a_refused_batch_announces_and_keeps_the_files() -> None:
-    assert re.search(r"catch \(err\) \{[\s\S]*?announce\(String\(err\.message \|\| err\), 'err'\)", UPLOAD)
+    assert re.search(
+        r"catch \(err\) \{[\s\S]*?announce\(String\(err\.message \|\| err\), 'err'\)", UPLOAD
+    )
     assert re.search(r"finally \{[\s\S]*?input\.value = ''", UPLOAD)
 
 
@@ -68,7 +70,8 @@ def test_the_shell_hands_the_module_its_seam() -> None:
     assert "import { bindUpload } from './src/ui/upload.js'" in SHELL
     assert re.search(
         r"bindUpload\(\{[\s\S]*?root: dicomWebRoot\(\),[\s\S]*?"
-        r"onDone: \(\) => showStudies\(\),[\s\S]*?announce: \(message, kind\) => notice\(message, kind\),",
+        r"onDone: \(\) => showStudies\(\),[\s\S]*?"
+        r"announce: \(message, kind\) => notice\(message, kind\),",
         SHELL,
     )
     assert "from '../app.js'" not in UPLOAD and "from './app.js'" not in UPLOAD, (
