@@ -1,37 +1,40 @@
-# Тесты viewer'а: как сьют устроен и как писать свой
+# Viewer tests: how the suite is built and how to write your own
 
-Сьют — `viewer/tests/`, 244 теста, ~2 секунды, без node и без сборки. Тесты написаны
-на Python и читают исходники так же, как их читает ревьюер: построчно, regex'ами,
-AST. Это сознательный выбор поверх js-раннера — см. последний раздел.
+The suite — `viewer/tests/`, 244 tests, ~2 seconds, no node and no build. The
+tests are written in Python and read the sources the same way a reviewer does:
+line by line, with regexes and the AST. That is a deliberate choice over a JS
+runner — see the last section.
 
-## Запуск
+## Running
 
 ```bash
-cd viewer && python -m pytest tests           # всё, из домашней директории viewer'а
-python -m pytest viewer/tests/test_upload.py -q   # один файл — с корня репозитория
+cd viewer && python -m pytest tests           # everything, from the viewer's home directory
+python -m pytest viewer/tests/test_upload.py -q   # one file — from the repository root
 ```
 
-Из корня репозитория тоже работает (`testpaths` включает `viewer/tests`), но владелец
-viewer'а живёт в `viewer/`.
+It also works from the repository root (`testpaths` includes `viewer/tests`),
+but the viewer's owner lives in `viewer/`.
 
-## Пять правил, которые сьют держит за всех
+## The five rules the suite holds for everyone
 
-1. **Ни одного импорта оболочки из модулей.** `src/ui/*` и `src/core/*` не импортируют
-   `app.js`. Тест — `test_architecture.py::test_every_registered_contribution_module_
-   is_imported_by_the_shell` и соседние. Ваша панель получает всё через `register()`.
-2. **Каждая строка UI — во всех локалях.** Новый ключ в одном `i18n/*.json` падает
-   в `test_every_language_answers_every_key_the_others_do`. Тринадцать файлов, один
-   проход — таблицы не расходятся.
-3. **Перевод не дотрагивается до измеренного.** DICOM-значения и safety-строки не
-   проходят через `t()` — `test_translation_never_reaches_a_measured_value_or_the_
+1. **Not a single shell import from modules.** `src/ui/*` and `src/core/*` never
+   import `app.js`. The test — `test_architecture.py::test_every_registered_contribution_module_
+   is_imported_by_the_shell` and its neighbors. Your panel gets everything through
+   `register()`.
+2. **Every UI string — in every locale.** A new key in one `i18n/*.json` fails
+   in `test_every_language_answers_every_key_the_others_do`. Thirteen files, one
+   pass — the tables never drift apart.
+3. **Translation never touches a measured value.** DICOM values and safety
+   strings never go through `t()` — `test_translation_never_reaches_a_measured_value_or_the_
    safety_statement`.
-4. **Contribution не существует, пока о нём не импортировано.** Зарегистрировали
-   модуль — добавьте импорт в `app.js`; гейт сверяет реестр с импортами.
-5. **Отказ — предложение, а не тишина.** Кнопка, которая молча не работает, учит
-   читателя не нажимать кнопки. Каждый отказ рендерится предложением платформы
-   (см. `ai-dialog.js`, `upload.js`).
+4. **A contribution does not exist until something imports it.** Registered a
+   module — add the import to `app.js`; the gate compares the registry with the
+   imports.
+5. **Failure is a sentence, not silence.** A button that silently does nothing
+   teaches the reader not to press buttons. Every failure renders as a platform
+   sentence (see `ai-dialog.js`, `upload.js`).
 
-## Скелет теста для вашей контрибуции
+## A test skeleton for your contribution
 
 ```python
 # viewer/tests/test_dose_notes.py
@@ -55,21 +58,22 @@ def test_the_panel_never_reaches_the_shell() -> None:
     assert "from '../../app.js'" not in PANEL
 ```
 
-Дальше — проверки смысла вашей панели: какие ключи state она читает, какие строки
-рендерит, что показывает при пустом состоянии.
+Next — checks of your panel's meaning: which state keys it reads, which strings
+it renders, what it shows in the empty state.
 
-## Почему не js-тесты
+## Why not JS tests
 
-У viewer'а нет шага сборки и нет node-зависимости — сьют не должен её вводить.
-Строковые гейты дешевы, стабильны и читаются ревьюером; поведенческая логика
-(рендер, DICOM-разбор) покрыта платформенными интеграционными тестами и живыми
-прогонами (см. ROADMAP, G-U3/G-U4: каждая фича закрывалась браузерной проверкой).
-Когда появится первый seam, требующий исполнения JS (динамические плагины), —
-вот тогда и появится js-раннер, отдельным решением.
+The viewer has no build step and no node dependency — the suite must not
+introduce one. String gates are cheap, stable, and read like the reviewer reads;
+behavioral logic (rendering, DICOM parsing) is covered by platform integration
+tests and live runs (see ROADMAP, G-U3/G-U4: every feature was closed with a
+browser check). When the first seam appears that requires executing JS (dynamic
+plugins) — that is when a JS runner appears, as a separate solution.
 
-## Пример из жизни
+## A real-life example
 
-`upload.js` (U4) пришёл вместе с `test_upload.py`: восемь гейтов пинят multipart-форму
-STOW-RS (ручная сборка, не FormData), цель `{root}/studies`, показ
-FailedSOPSequence, drag-drop с обязательным `preventDefault`, seam с оболочкой
-и наличие строк во всех 13 локалях. Читая этот тест, вы читаете контракт фичи.
+`upload.js` (U4) arrived together with `test_upload.py`: eight gates prod the
+multipart STOW-RS form (hand-assembled, not FormData), the `{root}/studies`
+target, the FailedSOPSequence display, drag-drop with a mandatory `preventDefault`,
+the seam with the shell, and the presence of strings in all 13 locales. Reading
+this test, you read the feature's contract.

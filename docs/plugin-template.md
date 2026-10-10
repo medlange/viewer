@@ -1,27 +1,28 @@
-# Шаблон плагина: панель, которую не стыдно показать ревьюеру
+# Plugin template: a panel you can show a reviewer without shame
 
-`getting-started.md` заканчивается на минимальной панели. Этот шаблон — её
-производственная форма: та же регистрация, но с дисциплиной, которую сьют требует
-от штатного кода. Каждое правило в комментарии названо гейтом, который его проверяет.
+`getting-started.md` ends at a minimal panel. This template is its production
+form: the same registration, but with the discipline the suite requires of
+shipped code. Every rule in a comment names the gate that checks it.
 
-Код в блоках ниже — не иллюстрация: `viewer/tests/test_plugin_template.py`
-извлекает эти блоки и прогоняет по ним те же проверки, что сьют прогоняет по
-штатным панелям. Гайд не может протухнуть, не заметив этого.
+The code in the blocks below is not an illustration: `viewer/tests/test_plugin_template.py`
+extracts these blocks and runs the same checks on them that the suite runs on
+shipped panels. The guide cannot rot without noticing it.
 
-## Файл плагина
+## The plugin file
 
 ```js
 // SPDX-License-Identifier: Apache-2.0
-/* acme.dose-notes — заметки протокола в правом рельсе.
+/* acme.dose-notes — protocol notes in the right rail.
  *
- * ШАБЛОН ПЛАГИНА (V3): копируйте, меняйте id/рендер, сохраняйте форму. Вся
- * интеграция — register() плюс один import в app.js; оболочка строит секцию.
+ * PLUGIN TEMPLATE (V3): copy it, change id/render, keep the shape. All
+ * integration is register() plus one import line in app.js; the shell builds
+ * the section.
  */
 import { KINDS, register } from '../core/registry.js';
 import { get, subscribeTo } from '../core/state.js';
 import { t, onLanguageChange } from '../core/i18n.js';
 
-/** Одна эскейп-функция на весь плагин. Архивные строки — чужие байты. */
+/** One escape helper for the whole plugin. Archive strings are someone else's bytes. */
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -31,7 +32,7 @@ function esc(s) {
 function render(root) {
   const { series } = get();
   if (!series || !series.length) {
-    // Пустое состояние — тоже состояние. Секция не должна выглядеть сломанной.
+    // Empty state is still a state. The section must not look broken.
     root.innerHTML = `<p class="muted">${esc(t('dose.none', 'No study open.'))}</p>`;
     return;
   }
@@ -50,46 +51,48 @@ export default register({
   mount(root) {
     render(root);
     const stop = subscribeTo(['series'], () => render(root));
-    // Смена языка не меняет state — слушаем её отдельно, иначе подписи зависают.
+    // A language change is not a state change — listen for it separately, or
+    // labels freeze.
     const stopLang = onLanguageChange(() => render(root));
-    // ОТПИСКА ОБЯЗАТЕЛЬНА: mount вызывается повторно при перемонтировании, и без
-    // возврата teardown панель рисуется дважды на каждое изменение состояния.
+    // TEARDOWN IS MANDATORY: mount is called again on remount, and without
+    // returning a teardown the panel draws twice per state change.
     return () => { stop(); stopLang(); };
   },
 });
 ```
 
-## Строки, которые добавляет плагин
+## Strings the plugin adds
 
-1. `app.js`: `import './src/ui/dose-notes.js';` — рядом с другими импортами панелей.
-2. `i18n/*.json` (13 файлов): ключи заголовка и подписей:
+1. `app.js`: `import './src/ui/dose-notes.js';` — next to the other panel imports.
+2. `i18n/*.json` (13 files): the heading and label keys:
 
 ```json
 {
-  "panel.acme.dose-notes": "Заметки по дозе",
-  "dose.none": "Нет открытого исследования.",
-  "dose.summary": "Серий в исследовании: {n}"
+  "panel.acme.dose-notes": "Dose notes",
+  "dose.none": "No study open.",
+  "dose.summary": "{n} series in this study"
 }
 ```
 
-3. `viewer/tests/test_dose_notes.py` — гейт-тест (см. testing.md); без него сьют
-   пропустит плагин мимо, и правило «контрибуция = модуль + регистрация + тест»
-   останется недоказанным.
+3. `viewer/tests/test_dose_notes.py` — the gate test (see testing.md); without
+   it the suite walks past the plugin, and the rule "contribution = module +
+   registration + test" stays unproven.
 
-## Что плагин получает бесплатно
+## What the plugin gets for free
 
-- Секцию в рельсе с заголовком из `panel.<id>` и раскладкой по `order`.
-- Перемонтирование и чистую уборку (оболочка держит `mountedPanels`).
-- Возможность выключения deployment'ом: `viewer.config.json` → `panels.disabled`
-  (V2) — без правок кода плагина.
-- Перенос между рельсами читателем (rails.js) — секция двигается, плагин не знает.
+- A rail section with its heading from `panel.<id>` and layout by `order`.
+- Remounting and clean teardown (the shell holds `mountedPanels`).
+- The ability for deployment to disable it: `viewer.config.json` → `panels.disabled`
+  (V2) — no code edits in the plugin.
+- Moving between rails by the reader (rails.js) — the section moves, the plugin
+  never knows.
 
-## Чего плагин не может
+## What the plugin cannot do
 
-- Импортировать `app.js` или что-либо из `src/ui/*` в `src/core/*` — правило
-  no-shell-import, гейт `test_architecture.py` падает в обе стороны.
-- Лезть в сеть напрямую: панель читает state, который заполняет оболочка. Свои
-  запросы — через plugin API (`api.dicomweb` — тот же сконфигурированный клиент,
-  с Authorization хоста): см. [extensions.md](extensions.md) и
-  [api.md](api.md) — шов, который раньше был «отдельным решением», существует.
-- Писать в DOM вне своего `root`: оболочка владеет раскладкой.
+- Import `app.js` or anything from `src/ui/*` into `src/core/*` — the
+  no-shell-import rule, gate `test_architecture.py` fails both ways.
+- Go to the network directly: the panel reads the state the shell fills. Its own
+  requests go through the plugin API (`api.dicomweb` — the same configured client,
+  with the host's Authorization): see [extensions.md](extensions.md) and
+  [api.md](api.md) — the seam that used to be "a separate solution" exists.
+- Write to the DOM outside its own `root`: the shell owns the layout.

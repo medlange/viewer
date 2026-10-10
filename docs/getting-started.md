@@ -1,15 +1,15 @@
-# Панель за 30 строк
+# A panel in 30 lines
 
-Это пошаговое руководство: от пустого файла до смонтированной панели в правом рельсе,
-без единой правки ядра, кроме одной строки-импорта (это и есть точка расширения).
-Каждый шаг проверяем командой из шага 6.
+This is a step-by-step guide: from an empty file to a mounted panel in the right
+rail, without a single core edit — except for one import line (that is the
+extension point). Verify every step with the command from step 6.
 
-## Шаг 1 — файл панели
+## Step 1 — the panel file
 
-Создайте `src/ui/series-inventory-panel.js`:
+Create `src/ui/series-inventory-panel.js`:
 
 ```js
-// Счётчик серий по модальностям открытого исследования.
+// Series counter by modality for the open study.
 import { KINDS, register } from '../core/registry.js';
 import { get, subscribeTo } from '../core/state.js';
 import { t, onLanguageChange } from '../core/i18n.js';
@@ -50,69 +50,73 @@ export default register({
 });
 ```
 
-30 строк кода. Что здесь важно:
+30 lines of code. What matters here:
 
-- `register()` — вся интеграция. Оболочка сама построит секцию в рельсе (`slot`,
-  `order`), заголовок возьмёт из i18n-ключа `panel.<id>`.
-- `mount(root)` получает элемент и возвращает функцию отписки. Оболочка вызывает её
-  при перемонтировании — утечка подписки выглядит как мерцание, гейт это ловит.
-- Панель читает только `core/state`. Никаких импортов `app.js` — это запрещено
-  архитектурным гейтом (`test_architecture.py` падает на таком импорте).
-- `esc()` перед каждым `innerHTML`. Архивные строки — чужие байты.
-- Переводимые подписи через `t()` с английским литералом-фолбэком; архивные значения
-  (имена, UID) НЕ переводятся — см. шаг 4.
+- `register()` is the whole integration. The shell builds the rail section itself
+  (`slot`, `order`) and takes the heading from the i18n key `panel.<id>`.
+- `mount(root)` receives an element and returns an unsubscribe function. The shell
+  calls it on remount — a subscription leak looks like flicker, and the gate
+  catches it.
+- The panel reads only `core/state`. No imports of `app.js` — the architecture
+  gate forbids them (`test_architecture.py` fails on such an import).
+- `esc()` before every `innerHTML`. Archive strings are someone else's bytes.
+- Translatable labels go through `t()` with an English literal fallback; archive
+  values (names, UIDs) are NOT translated — see step 4.
 
-## Шаг 2 — одна строка в оболочке
+## Step 2 — one line in the shell
 
-В `app.js`, рядом с остальными импортами панелей:
+In `app.js`, next to the other panel imports:
 
 ```js
 import './src/ui/series-inventory-panel.js'; // registers the panel
 ```
 
-Импорт ради побочного эффекта регистрации — так подключены все штатные панели.
+An import for the registration side effect — that is how all built-in panels are
+wired.
 
-## Шаг 3 — строки в локали
+## Step 3 — strings in the locale
 
-Заголовок секции берётся из ключа `panel.acme.series-inventory`. Добавьте его во все
-файлы `i18n/*.json` (13 языков; английского файла нет — он литералы в коде):
+The section heading comes from the key `panel.acme.series-inventory`. Add it to
+all `i18n/*.json` files (13 languages; there is no English file — English is the
+literals in the code):
 
 ```json
-"panel.acme.series-inventory": "Серии"
+"panel.acme.series-inventory": "Series"
 ```
 
-Гейт `test_every_language_answers_every_key_the_others_do` упадёт, если ключ есть не
-во всех файлах, — это фича: таблицы не расходятся.
+The gate `test_every_language_answers_every_key_the_others_do` fails if the key
+is missing from any file — that is a feature: the tables never drift apart.
 
-## Шаг 4 — правило перевода одной строкой
+## Step 4 — the translation rule in one line
 
-Подписи, которые вы пишете — переводите (`t('inv.none', ...)`). Значения из DICOM —
-нет: имя пациента в viewer'е должно совпадать с именем в PACS побайтово. Гейт
-`test_translation_never_reaches_a_measured_value_or_the_safety_statement` следит за
-границей с той стороны.
+Translate the labels you write (`t('inv.none', ...)`). Do not translate values
+from DICOM: the patient name in the viewer must match the name in the PACS byte
+for byte. The gate `test_translation_never_reaches_a_measured_value_or_the_safety_statement`
+watches that boundary from the other side.
 
-## Шаг 5 — посмотреть
+## Step 5 — look at it
 
 ```bash
 docker compose -f medos/deploy/compose/docker-compose.yml up -d web
-# откройте http://localhost:3000/mos-viewer/ и откройте исследование
+# open http://localhost:3000/mos-viewer/ and open a study
 ```
 
-Панель стоит в правом рельсе под «Измерениями» (`order: 40` после штатных 10/20/30).
-Deployment может выключить её без правок кода: `viewer.config.json` →
-`"panels": {"disabled": ["acme.series-inventory"]}` (V2).
+The panel sits in the right rail below "Measurements" (`order: 40` after the
+built-in 10/20/30). Deployment can disable it without code edits:
+`viewer.config.json` → `"panels": {"disabled": ["acme.series-inventory"]}` (V2).
 
-## Шаг 6 — гейт-тест
+## Step 6 — the gate test
 
-Скопируйте `viewer/tests/test_plugin_template.py` за образец и добавьте свои проверки,
-затем:
+Copy `viewer/tests/test_plugin_template.py` as a model and add your own checks,
+then:
 
 ```bash
 cd viewer && python -m pytest tests
 ```
 
-Весь сьют — 244 теста, ~2 секунды, node не нужен: тесты читают исходники так же, как
-их читает ревьюер. Правила, которые ваш код уже соблюдает, если вы шли по гайду:
-ни одного импорта оболочки из `src/ui/*`, `mount` возвращает отписку, каждая строка
-UI — во всех локалях. Дальше — [plugin-template.md](plugin-template.md)
-(производственная форма панели) и [testing.md](testing.md) (как писать тесты).
+The whole suite — 244 tests, ~2 seconds, no node needed: the tests read the
+sources the same way a reviewer does. Rules your code already obeys if you
+followed the guide: not a single import of the shell from `src/ui/*`, `mount`
+returns its teardown, every UI string — in every locale. Next —
+[plugin-template.md](plugin-template.md) (the production form of the panel) and
+[testing.md](testing.md) (how to write tests).
