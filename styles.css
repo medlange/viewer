@@ -1178,10 +1178,10 @@ body.rail-dragging { cursor: col-resize; user-select: none; }
 .chrome-menu-item[data-on] { color: var(--accent); }
 
 .itool {
-  /* `<button>` без объявленного кегля берёт дефолт браузера — 13.3333px в Chrome. Текста
-     в этих кнопках нет, так что на вид это ничего не меняло, но в системе появлялась
-     четырнадцатая ступень, которую никто не выбирал, и любой текст, добавленный сюда
-     позже, сел бы на неё. */
+  /* A `<button>` with no declared font size takes the browser default -- 13.3333px in
+     Chrome. These buttons carry no text, so visually it changed nothing, but a fourteenth
+     rung appeared in the scale that nobody chose, and any text added here later would
+     land on it. */
   font: 400 12px/1 var(--sans);
   width: 30px;
   height: 28px;
@@ -1418,9 +1418,9 @@ body.rail-dragging { cursor: col-resize; user-select: none; }
      to -- so every layout that fit before is untouched. */
   flex-wrap: wrap;
 }
-/* ЗАГОЛОВОК ЭКРАНА берёт верхнюю ступень шкалы. На 15px он спорил с латеральностью
-   на снимке — а это единственная метка, различающая стороны пациента, и она должна
-   быть крупнейшим текстом, который видит читающий. */
+/* THE SCREEN HEADING takes the top rung of the scale. At 15px it competed with the
+   laterality on the image -- and that is the only mark distinguishing the patient's
+   sides, and it must be the largest text the reader sees. */
 .panel h2 { margin: 0; font: 600 18px/1.2 var(--sans); letter-spacing: -0.01em; color: var(--ink); }
 .wl-count { font: 400 11px/1 var(--mono); color: var(--muted); flex-grow: 1; }
 
@@ -2307,12 +2307,13 @@ body.annot-dragging { cursor: grabbing; }
 .aside > .rail-section:first-of-type h3 { border-top: 0; }
 
 /* =====================================================================================
-   СВЕРНУТЬ РЕЙЛ — И ВЕРНУТЬ ЕГО.
+   COLLAPSE THE RAIL -- AND BRING IT BACK.
 
-   Сворачивание жило только на клавишах `[` и `]`, которых нет и в списке горячих клавиш.
-   Читатель мог закрыть рейл и остаться без единого способа его открыть. Кнопка закрытия
-   сидит в самом рейле, а на его месте остаётся полоса 18px — достаточно, чтобы держать
-   цель, достаточно узко, чтобы освобождение места оставалось смыслом операции.
+   Collapsing used to live only on the `[` and `]` keys, which are not even in the hotkey
+   list. A reader could close the rail and be left without a single way to open it. The
+   close button sits in the rail itself, and an 18px strip remains in its place -- wide
+   enough to hold a target, narrow enough that freeing the space stays the point of the
+   operation.
    ===================================================================================== */
 .rail-collapse {
   position: absolute;
@@ -2350,9 +2351,10 @@ body.annot-dragging { cursor: grabbing; }
 .rail-collapse-left { inset-inline-start: 5px; }
 .rail-collapse:hover { color: var(--ink); background: var(--panel-2); }
 .rail-collapse:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
-/* Стрелка рисуется, а не набирается: глиф зависел бы от шрифта, которого в поставке
-   может не быть. ТЕПЕРЬ ЭТО ШЕВРОН ИЗ НАБОРА, а не повёрнутый квадрат: он стоит в 12px от
-   шеврона первой секции, и две метки разного веса рядом читались как разные знаки. */
+/* THE ARROW IS DRAWN, NOT TYPED: the glyph would depend on a font that may not ship.
+   IT IS NOW A CHEVRON FROM THE SET, not a rotated square: it stands 12px from the first
+   section's chevron, and two marks of different weights side by side read as different
+   signs. */
 .rail-collapse span {
   display: inline-flex; align-items: center; justify-content: center;
 }
@@ -2387,15 +2389,15 @@ body.annot-dragging { cursor: grabbing; }
 [dir="rtl"] .rail-restore span { transform: rotate(-45deg); }
 [dir="rtl"] [data-restores="right"] span { transform: rotate(135deg); }
 
-/* Рейл — контекст позиционирования для своей кнопки закрытия. */
+/* The rail is the positioning context for its close button. */
 .side, .aside { position: relative; }
-/* Заголовок первой секции уступает место кнопке -- правила выше, у `.fold-mark`.
-   ЗДЕСЬ ОНИ БЫЛИ, И СТОРОНЫ В НИХ БЫЛИ ЗЕРКАЛЬНЫЕ: `padding-right` на правом рельсе и
-   `padding-left` на левом, при том что кнопка правого рельса -- `rail-collapse-left`
-   (`left: 5px`), а кнопка левого -- `rail-collapse-right` (`right: 5px`). Место
-   резервировалось на той стороне, где кнопки нет. На левом рельсе это ничего не ломало --
-   отступ ушёл в пустоту, а короткому заголовку и так хватало; на правом кнопка легла
-   точно на шеврон первой секции. */
+/* The first section's heading makes room for the button -- the rules above, at
+   `.fold-mark`. THEY USED TO BE HERE, AND THE SIDES IN THEM WERE MIRRORED: `padding-right`
+   on the right rail and `padding-left` on the left, even though the right rail's button
+   is `rail-collapse-left` (`left: 5px`) and the left rail's is `rail-collapse-right`
+   (`right: 5px`). The room was reserved on the side where the button is not. On the left
+   rail this broke nothing -- the padding went into empty space, and the short heading had
+   enough anyway; on the right the button landed exactly on the first section's chevron. */
 
 /* THE PRIOR LIST: one patient's other studies, beside the series of the one being read.
    It borrows `.series-item` wholesale -- same target size, same focus ring, same hover --

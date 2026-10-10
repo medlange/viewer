@@ -240,9 +240,9 @@ function render(root) {
   if (measurements.length) {
     const mode = readStore(GROUP_KEY, 'none');
     const foldedGroups = new Set(readStore(FOLD_KEY, []));
-    // ОДИН ВЫЗОВ НА ОТРИСОВКУ, а не по одному на строку таблицы: `labels()` строит
-    // объект, и вызов его внутри цикла по измерениям означал бы двадцать построений
-    // на двадцать строк.
+    // ONE CALL PER RENDER, not one per table row: `labels()` builds an object, and
+    // calling it inside the loop over the measurements would mean twenty builds for
+    // twenty rows.
     const L = labels();
     parts.push(
       `<div class="meas-head">${escape(L.yours)} `

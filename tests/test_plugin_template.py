@@ -97,7 +97,7 @@ def test_the_guides_name_the_rules_a_reader_must_not_relearn() -> None:
         names_the_rule = (
             "test_architecture.py" in doc
             or "no-shell-import" in doc
-            or "импорта оболочки" in doc
+            or "shell import" in doc
         )
         assert names_the_rule, (
             f"{name} must name the no-shell-import rule — a reader who learns it "

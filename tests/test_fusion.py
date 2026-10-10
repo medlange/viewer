@@ -219,8 +219,11 @@ def test_the_panel_says_what_is_drawn_through_it_and_what_it_is_not() -> None:
         "the mark is not drawn on the panel"
     )
 
-    strings = json.loads((VIEWER / "i18n" / "ru.json").read_text(encoding="utf-8"))
-    assert "measur" in strings["fusion.resampled"] or "измер" in strings["fusion.resampled"], (
+    # ASKED OF THE ENGLISH FALLBACK at the call site, not of the Russian table: ru.json
+    # is Russian by design and an English gate cannot quote it, so the note's meaning is
+    # pinned where its English wording lives.
+    note = re.search(r"t\('fusion\.resampled',\s*'([^']+)'", mark)
+    assert note and "measur" in note.group(1), (
         "the resampling note does not say the values cannot be measured, which is the "
         "half of it that matters"
     )

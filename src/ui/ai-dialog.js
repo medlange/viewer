@@ -4,8 +4,8 @@
  *
  * THIS IS WHAT THE ROADMAP CALLS U3. The analysis used to live on a separate page
  * (`/medicalos/standalone/`), and a reader who opened a study in the viewer could do
- * nothing with it -- measured by the owner on 2026-10-03 as "открыл исследование и
- * ничего не могу сделать". The dialog is the plug-n-play seam between the viewer and
+ * nothing with it -- measured by the owner on 2026-10-03 as "opened a study and
+ * could not do a thing with it". The dialog is the plug-n-play seam between the viewer and
  * Medlange Core: the model LIST comes from `window.VIEWER_CONFIG.capabilities` (the
  * deployment's configured whitelist, the same source the MedicalOS panel uses), the
  * DEPENDENCY EDGES come from the platform's `GET /api/v1/capabilities`, the request

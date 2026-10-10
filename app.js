@@ -4909,7 +4909,7 @@ function paintChrome() {
  * TWO SEPARATE FAULTS, both invisible from the source.
  *
  * 1. `<input type="date">` formats itself from the BROWSER's locale, not the page's. On a
- *    machine set to Russian the field reads `дд.мм.гггг` however the viewer is set, so a reader
+ *    machine set to Russian the field reads `dd.mm.yyyy` however the viewer is set, so a reader
  *    who chose English still types into a Russian field. Chrome honours a `lang` on the
  *    input itself, so the field is told which language it is in.
  *
@@ -4963,7 +4963,7 @@ onLanguageChange((lang) => {
   // AND THE CANVASES. The HUD writes strings into itself -- the link badge, the slab
   // caption -- and nothing redrew it on a language change, so a badge kept the language
   // it was drawn in while the chrome around it moved on. Measured 2026-10-04: a French
-  // surface carrying a `по положению` badge.
+  // surface carrying a `by position` badge.
   drawAll();
   // AND ANYTHING THE SHELL BUILT AS A STRING. `paintChrome` only reaches nodes carrying
   // `data-i18n`, which the study list's rows and its count are not -- they are written by
@@ -4980,7 +4980,7 @@ onLanguageChange((lang) => {
   rebuildToolbarChrome();
   // AND THE PICTURE'S OWN CHROME. The HUD's plane word, and the canvas's accessible name
   // with it, are written by `draw()` -- not by any builder -- so after a language change
-  // the toolbar said "Axial" while the corner of the image still said "аксиальная". The
+  // the toolbar said "Axial" while the corner of the image still said "axial". The
   // redraw is the same one a resize does; it repaints from state and invents nothing.
   drawAll();
 });
